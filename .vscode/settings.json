@@ -4,6 +4,8 @@
         "configuration.h": "c",
         "timer.h": "c",
         "compare": "c",
-        "cstdint": "c"
+        "cstdint": "c",
+        "led.h": "c",
+        "memory_map.h": "c"
     }
 }

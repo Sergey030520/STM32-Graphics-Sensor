@@ -23,7 +23,7 @@ typedef struct{
     uint32_t reserved2;
     uint32_t DCR;
     uint32_t DMAR;
-} GP_Timer_Type1;
+} GP_Timer_Type;
 
 typedef struct{
     uint32_t DIER;
@@ -126,5 +126,5 @@ typedef enum
 } Timer_Channel;
 // 
 
-
-void delay_timer(uint16_t ms);
+void init_timer();
+void delay_timer(uint32_t ms);

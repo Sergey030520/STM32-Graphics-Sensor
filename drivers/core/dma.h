@@ -2,11 +2,6 @@
 
 #pragma once
 
-#define DMA1_Reg 0x40020000U
-#define DMA2_Reg 0x40020400U
-
-
-
 // CCR
 #define DMA_MEM2MEM (0x1 << 14)
 #define DMA_PL_LOW (0b00 << 12)
@@ -30,16 +25,16 @@
 #define DMA_EN (0x1 << 0)
 
 // SR
-#define TEIFx(channel) (0x1 << ((channel - 1) * 4 + 3))
-#define HTIFx(channel) (0x1 << ((channel - 1) * 4 + 2))
-#define TCIFx(channel) (0x1 << ((channel - 1) * 4 + 1))
-#define GIFx(channel) (0x1 << ((channel - 1) * 4))
+#define DMA_SR_TEIFx(channel) (0x1 << ((channel - 1) * 4 + 3))
+#define DMA_SR_HTIFx(channel) (0x1 << ((channel - 1) * 4 + 2))
+#define DMA_SR_TCIFx(channel) (0x1 << ((channel - 1) * 4 + 1))
+#define DMA_SR_GIFx(channel) (0x1 << ((channel - 1) * 4))
 
 // IFSR
-#define CTEIFx TEIFx
-#define CHTIFx HTIFx
-#define CTCIFx TCIFx
-#define CGIFx GIFx
+#define DMA_IFCR_CTEIFx DMA_SR_TEIFx
+#define DMA_IFCR_CHTIFx DMA_SR_HTIFx
+#define DMA_IFCR_CTCIFx DMA_SR_TCIFx
+#define DMA_IFCR_CGIFx DMA_SR_GIFx
 
 typedef enum
 {
@@ -69,19 +64,33 @@ typedef struct
     DMA_Channel_Settings channels[7];
 } DMA_Type;
 
+typedef enum {
+    DMA_DIR_PERIPH_TO_MEM = 0,
+    DMA_DIR_MEM_TO_PERIPH = 1,
+} DMA_Direction;
+
+typedef struct {
+    DMA_Type *dma;
+    DMA_Channel channel;
+    DMA_Direction direction;
+    uint32_t peripheral_addr;
+    uint32_t mem_size; 
+    uint32_t periph_size;
+    uint8_t inc_mem;
+    uint8_t inc_periph;
+    uint8_t circular;
+} DMA_Config;
+
+typedef void (* dma_callback_t) (void);
 
 
-extern DMA_Type *dma1;
+void dma_init(DMA_Config *cfg);
+void dma_send(DMA_Config *cfg, void *buffer, uint32_t length);
+
+void set_enabled_dma(DMA_Type *dma, DMA_Channel channel, uint8_t enable);
+void reset_flags_dma(DMA_Type *dma, DMA_Channel channel);
 
 
-void send_data_usart1_dma(uint8_t *message, uint16_t length);
-void recive_data_usart1_dma(uint8_t *message, uint16_t length);
-
-
-
-
-
-
-
-
-void DMA1_Channel3_IRQHandler(void);
+void DMA2_Stream3_IRQHandler();
+void DMA2_Stream4_IRQHandler();
+void DMA2_Stream7_IRQHandler();

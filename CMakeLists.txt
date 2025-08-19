@@ -7,24 +7,11 @@ project(IPS_TFT_ST7789 C ASM)
 set(EXECUTABLE ${PROJECT_NAME}.elf)
 set(LINKER_FILE ${CMAKE_SOURCE_DIR}/conf_mem_stm32f108/STM32F103C8TX_FLASH.ld)
 
-
-add_executable(${EXECUTABLE}  startup/startup_stm32f103c8tx.s
-        main.c sysmem.c
-        configuration.h 
-        led.h led.c
-        rcc.h rcc.c
-        gpio.c
-        timer.h timer.c
-        usart.h usart.c 
-        dma.h dma.c
-        spi.h spi_master.c
-        tft.h tft.c
-        math_pixels.h math_pixels.c
-) 
+add_subdirectory(drivers)
+add_subdirectory(logger)
 
 
-
-target_compile_options(${EXECUTABLE} PRIVATE
+set(ARM_FLAGS
         -mcpu=cortex-m3
         -mthumb
         -mfloat-abi=soft
@@ -33,7 +20,24 @@ target_compile_options(${EXECUTABLE} PRIVATE
         -Wall
         -O0
         -g3
-        )
+)
+
+
+add_executable(${EXECUTABLE} 
+    startup/startup_stm32f103c8tx.s
+    main.c
+)
+
+
+target_compile_options(drivers_core PRIVATE ${ARM_FLAGS})
+target_compile_options(logger PRIVATE ${ARM_FLAGS})
+target_compile_options(${EXECUTABLE} PRIVATE ${ARM_FLAGS})
+
+target_link_libraries(${EXECUTABLE} PRIVATE
+        drivers_core
+        logger
+        m
+)
 
 target_link_options(${EXECUTABLE} PRIVATE
         -T${LINKER_FILE}

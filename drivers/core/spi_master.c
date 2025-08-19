@@ -33,7 +33,7 @@ int init_spi_master()
     spi_master->CR1 |= SPI_CR1_MSTR | SPI_CR1_SSM | SPI_CR1_SSI | (0x3 << 3) | SPI_CR1_CPOL | SPI_CR1_CPHA;
     spi_master->CR1 |= SPI_CR1_SPE;
 
-    dma1->IFCR = CTCIFx(CHANNEL_3);
+    dma1->IFCR = DMA_IFCR_CTCIFx(CHANNEL_3);
 
     return 0;
 }
@@ -89,7 +89,7 @@ void send_data_spi_dma(uint8_t *message, uint16_t length)
     //     ;
     while(!(dma1->ISR & TCIFx(CHANNEL_3)));
     
-    dma1->IFCR &= CTCIFx(CHANNEL_3);
+    dma1->IFCR &= DMA_IFCR_CTCIFx(CHANNEL_3);
     dma1->channels[channel].CCR &= ~DMA_EN;
 }
 
@@ -110,7 +110,7 @@ void DMA1_Channel3_IRQHandler(void)
     // DMA_Channel channel = CHANNEL_3;
     // if (dma->ISR & TEIFx(channel)) // Check tranfer error
     // {
-    //     dma->IFCR |= CTEIFx(channel);
+    //     dma->IFCR |= DMA_IFCR_CTEIFx(channel);
     // }
     // if (dma->ISR & HTIFx(channel)) // Check half transfer
     // {
@@ -119,10 +119,10 @@ void DMA1_Channel3_IRQHandler(void)
     // if (dma->ISR & TCIFx(channel)) // Check transfer complete
     // {
     //     isSendDataDMA = 1;
-    //     dma->IFCR  |= CTCIFx(channel);
+    //     dma->IFCR  |= DMA_IFCR_CTCIFx(channel);
     // }
     // if (dma->ISR & GIFx(channel)) // Check global interrupt
     // {
-    //     dma->IFCR |= CGIFx(channel);
+    //     dma->IFCR |= DMA_IFCR_CGIFx(channel);
     // }
 }
