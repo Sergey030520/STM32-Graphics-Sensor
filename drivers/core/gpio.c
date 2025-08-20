@@ -21,15 +21,16 @@ void set_gpio_conf(GPIO_PinConfig_t *config)
         return;
     }
 
+
     GPIO_Type *gpiox = config->gpiox;
     uint16_t pin = config->pin;
     uint32_t shift = (pin % 8) * 4;
+    
+    reset_gpio_port(gpiox, pin);
 
     if (pin < 8) {
-        gpiox->CRL &= ~(0xF << shift);
         gpiox->CRL |= ((config->speed & 0x3) | ((config->pin_mode & 0x3) << 2)) << shift;
     } else {
-        gpiox->CRH &= ~(0xF << shift);
         gpiox->CRH |= ((config->speed & 0x3) | ((config->pin_mode & 0x3) << 2)) << shift;
     }
 

@@ -7,7 +7,7 @@
 
 RCC_Type *RCC = RCC_REG;
 
-static inline uint32_t decode_pllp(uint8_t pllp_code);
+
 void disable_all_GPIO_clocks_rcc();
 void set_bus_dividers_rcc(RCC_BusConfig *bus_conf);
 int configure_pll_rcc(RCC_PLLConfig *config);
@@ -15,6 +15,11 @@ int select_sys_clock(RCC_ClockSource src);
 int switch_to_hsi_rcc();
 int switch_to_hse_rcc();
 int switch_to_pll_rcc(RCC_PLLConfig *pll_config);
+uint32_t get_adc_freq(uint32_t apb2_freq);
+uint32_t get_apb2_freq(uint32_t hclk_freq);
+uint32_t get_apb1_freq(uint32_t hclk_freq);
+uint32_t get_hclk_freq(uint32_t sysclk_freq);
+
 
 void disable_all_GPIO_clocks_rcc()
 {
@@ -79,15 +84,27 @@ int configure_pll_rcc(RCC_PLLConfig *config)
         return -3;
     }
 
-    // Сбрасываем старые значения PLL
     RCC->CFGR &= ~(RCC_CFGR_PLLSRC_MASK | RCC_CFGR_PLLMUL_MASK | RCC_CFGR_PLLXTPRE_MASK);
 
     RCC->CFGR |= RCC_CFGR_PLLSRC(config->source);
 
+    if (config->source == RCC_HSE)
+    {
+        if (config->hse_divider)  
+            RCC->CFGR |= RCC_CFGR_PLLXTPRE;
+        else
+            RCC->CFGR &= ~RCC_CFGR_PLLXTPRE;
+    }
+
+    if (config->mul_factor >= RCC_PLL_MUL2 && config->mul_factor <= RCC_PLL_MUL16) 
+        RCC->CFGR |= RCC_CFGR_PLLMUL(config->mul_factor);
+    else
+        return -4;
+
     return 0;
 }
 
-void set_flash_latency(uint32_t hclk_freq)
+int set_flash_latency(uint32_t hclk_freq)
 {
     FLASH_Type *Flash = (FLASH_Type *)FLASH_REG;
     Flash->ACR &= ~FLASH_ACR_LATENCY_MASK;
@@ -107,6 +124,7 @@ void set_flash_latency(uint32_t hclk_freq)
     {
         return -1;
     }
+    return 0;
 }
 
 void set_bus_dividers_rcc(RCC_BusConfig *bus_conf)
@@ -277,101 +295,168 @@ int switch_to_pll_rcc(RCC_PLLConfig *pll_config)
 
 void enable_gpio_clock_rcc(RCC_PeripheralClockConfig *config)
 {
-    RCC->APB1ENR = config->APB1;
-    RCC->APB2ENR = config->APB2;
-    RCC->AHBENR = config->AHB;
+    if (config->APB2)
+    {
+        enable_and_reset_rcc(RCC_BUS_APB2, config->APB2);
+    }
+    if (config->APB1)
+    {
+        enable_and_reset_rcc(RCC_BUS_APB1, config->APB1);
+    }
+    if (config->AHB)
+    {
+        enable_and_reset_rcc(RCC_BUS_AHB, config->AHB);
+    }
 }
 
+uint32_t get_hclk_freq(uint32_t sysclk_freq)
+{
+    uint8_t hpre = (RCC->CFGR & RCC_CFGR_HPRE_MASK) >> 4;
+
+    switch (hpre)
+    {
+    case 0x0 ... 0x7:
+        return sysclk_freq;
+    case RCC_HPRE_DIV2:
+        return sysclk_freq >> 1;
+    case RCC_HPRE_DIV4:
+        return sysclk_freq >> 2;
+    case RCC_HPRE_DIV8:
+        return sysclk_freq >> 3;
+    case RCC_HPRE_DIV16:
+        return sysclk_freq >> 4;
+    case RCC_HPRE_DIV64:
+        return sysclk_freq >> 6;
+    case RCC_HPRE_DIV128:
+        return sysclk_freq >> 7;
+    case RCC_HPRE_DIV256:
+        return sysclk_freq >> 8;
+    case RCC_HPRE_DIV512:
+        return sysclk_freq >> 9;
+    default:
+        return sysclk_freq;
+    }
+}
+
+uint32_t get_apb1_freq(uint32_t hclk_freq)
+{
+    uint8_t ppre1 = (RCC->CFGR & RCC_CFGR_PPRE1_MASK) >> 8;
+
+    switch (ppre1)
+    {
+    case RCC_NOT_DIV:
+        return hclk_freq;
+    case RCC_APB_DIV2:
+        return hclk_freq >> 1;
+    case RCC_APB_DIV4:
+        return hclk_freq >> 2;
+    case RCC_APB_DIV8:
+        return hclk_freq >> 3;
+    case RCC_APB_DIV16:
+        return hclk_freq >> 4;
+    default:
+        return hclk_freq;
+    }
+}
+
+uint32_t get_apb2_freq(uint32_t hclk_freq)
+{
+    uint8_t ppre2 = (RCC->CFGR & RCC_CFGR_PPRE2_MASK) >> 11;
+
+    switch (ppre2)
+    {
+    case RCC_NOT_DIV:
+        return hclk_freq;
+    case RCC_APB_DIV2:
+        return hclk_freq >> 1;
+    case RCC_APB_DIV4:
+        return hclk_freq >> 2;
+    case RCC_APB_DIV8:
+        return hclk_freq >> 3;
+    case RCC_APB_DIV16:
+        return hclk_freq >> 4;
+    default:
+        return hclk_freq;
+    }
+}
+
+uint32_t get_adc_freq(uint32_t apb2_freq)
+{
+    uint8_t adcpre = (RCC->CFGR & RCC_CFGR_ADCPRE_MASK) >> 14;
+
+    switch (adcpre)
+    {
+    case RCC_ADCPRE_DIV2:
+        return apb2_freq / 2;
+    case RCC_ADCPRE_DIV4:
+        return apb2_freq / 4;
+    case RCC_ADCPRE_DIV6:
+        return apb2_freq / 6;
+    case RCC_ADCPRE_DIV8:
+        return apb2_freq / 8;
+    default:
+        return apb2_freq;
+    }
+}
+
+uint32_t get_usb_freq(uint32_t sysclk_freq)
+{
+    uint8_t usbpre = (RCC->CFGR & RCC_CFGR_USBPRE) ? 1 : 0;
+    return usbpre ? sysclk_freq : (sysclk_freq * 2) / 3;
+}
+
+RCC_ClockSource get_sysclk_source()
+{
+    uint32_t sws = (RCC->CFGR & RCC_CFGR_SWS_MASK) >> 2;
+
+    switch (sws)
+    {
+    case RCC_HSI:
+        return RCC_HSI;
+    case RCC_HSE:
+        return RCC_HSE;
+    case RCC_PLL:
+        return RCC_PLL;
+    default:
+        break;
+    }
+    return RCC_HSI;
+}
+
+uint32_t get_sysclk_freq()
+{
+    RCC_ClockSource clock_source = get_sysclk_source();
+
+    switch (clock_source)
+    {
+    case RCC_HSI:
+        return RCC_HSI_FREQ;
+    case RCC_HSE:
+        return RCC_HSE_FREQ;
+    case RCC_PLL:
+    {
+        uint32_t pll_mul = ((RCC->CFGR & RCC_CFGR_PLLMUL_MASK) >> 18) + 2;
+        uint32_t pll_src = (RCC->CFGR & RCC_CFGR_PLLSRC_MASK) >> 16;
+        uint32_t input_freq = (pll_src == RCC_HSE) ? ((RCC->CFGR & RCC_CFGR_PLLXTPRE_MASK) ? RCC_HSE_FREQ / 2 : RCC_HSE_FREQ) : RCC_HSI_FREQ / 2;
+        return input_freq * pll_mul;
+    }
+    default:
+        break;
+    }
+    return RCC_HSI_FREQ;
+}
 
 void get_clock_frequencies(RCC_Frequencies *freq)
 {
     if (freq == NULL)
         return;
 
-    uint32_t clock_source = (RCC->CFGR & RCC_CFGR_SWS_MASK) >> 2;
-    switch (clock_source)
-    {
-    case RCC_HSI:
-        freq->SYSCLK_Freq = RCC_HSI_FREQ;
-        break;
-    case RCC_HSE:
-        freq->SYSCLK_Freq = RCC_HSE_FREQ;
-        break;
-    case RCC_PLL:
-    {
-        uint32_t pll_mul = ((RCC->CFGR & RCC_CFGR_PLLMUL_MASK) >> 18) + 2;
-        uint32_t pll_src = (RCC->CFGR & RCC_CFGR_PLLSRC_MASK) >> 16;
-        uint32_t input_freq = 0;
-        if (pll_src == RCC_HSE)
-        {
-            if (RCC->CFGR & RCC_CFGR_PLLXTPRE_MASK)
-            {
-                input_freq = RCC_HSE_FREQ / 2;
-            }
-            else
-            {
-                input_freq = RCC_HSE_FREQ;
-            }
-        }
-        else
-        {
-            input_freq = RCC_HSI_FREQ / 2;
-        }
-
-        freq->SYSCLK_Freq = input_freq * pll_mul;
-        break;
-    }
-    default:
-        freq->SYSCLK_Freq = RCC_HSI_FREQ;
-        break;
-    }
-
-    // Вычисляем HCLK
-    uint32_t hpre = (RCC->CFGR & RCC_CFGR_HPRE_MASK) >> 4;
-    if (hpre < 8)
-        freq->HCLK_Freq = freq->SYSCLK_Freq;
-    else
-        freq->HCLK_Freq = freq->SYSCLK_Freq >> (hpre - 7);
-
-    // APB1
-    uint32_t ppre1 = (RCC->CFGR & RCC_CFGR_PPRE1_MASK) >> 8;
-    if (ppre1 < 4)
-        freq->APB1_Freq = freq->HCLK_Freq;
-    else
-        freq->APB1_Freq = freq->HCLK_Freq >> (ppre1 - 3);
-
-    // APB2
-    uint32_t ppre2 = (RCC->CFGR & RCC_CFGR_PPRE2_MASK) >> 11;
-    if (ppre2 < 4)
-        freq->APB2_Freq = freq->HCLK_Freq;
-    else
-        freq->APB2_Freq = freq->HCLK_Freq >> (ppre2 - 3);
-
-    // ADCCLK
-    uint32_t adcpre = (RCC->CFGR & RCC_CFGR_ADCPRE_MASK) >> 14;
-    switch (adcpre)
-    {
-    case RCC_ADCPRE_DIV2:
-        freq->ADC_Freq = freq->APB2_Freq / 2;
-        break;
-    case RCC_ADCPRE_DIV4:
-        freq->ADC_Freq = freq->APB2_Freq / 4;
-        break;
-    case RCC_ADCPRE_DIV6:
-        freq->ADC_Freq = freq->APB2_Freq / 6;
-        break;
-    case RCC_ADCPRE_DIV8:
-        freq->ADC_Freq = freq->APB2_Freq / 8;
-        break;
-    default:
-        freq->ADC_Freq = freq->APB2_Freq;
-        break;
-    }
-
-    if (RCC->CFGR & RCC_CFGR_USBPRE) // divide by 1
-        freq->USB_Freq = freq->HCLK_Freq / 1;
-    else // divide by 1.5
-        freq->USB_Freq = (freq->HCLK_Freq * 2) / 3;
+    freq->SYSCLK_Freq = get_sysclk_freq();
+    freq->HCLK_Freq = get_hclk_freq(freq->SYSCLK_Freq);
+    freq->APB1_Freq = get_apb1_freq(freq->HCLK_Freq);
+    freq->APB2_Freq = get_apb2_freq(freq->HCLK_Freq);
+    freq->ADC_Freq = get_adc_freq(freq->APB2_Freq);
+    freq->USB_Freq = get_usb_freq(freq->SYSCLK_Freq);
 }
 
 void enable_and_reset_rcc(RCC_Bus bus, uint32_t periph_mask)
@@ -384,10 +469,14 @@ void enable_and_reset_rcc(RCC_Bus bus, uint32_t periph_mask)
 
     case RCC_BUS_APB1:
         RCC->APB1ENR |= periph_mask;
+        RCC->APB1RSTR |= periph_mask;
+        RCC->APB1RSTR &= ~periph_mask;
         break;
 
     case RCC_BUS_APB2:
         RCC->APB2ENR |= periph_mask;
+        RCC->APB2RSTR |= periph_mask;
+        RCC->APB2RSTR &= ~periph_mask;
         break;
     }
 }

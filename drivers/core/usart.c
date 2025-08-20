@@ -38,11 +38,13 @@ void send_data_usart(uint8_t *message, uint16_t length)
 
 uint32_t calculate_USART_BRR(uint32_t usart_clk, uint32_t baud_rate)
 {
-    float usartdiv = (float)usart_clk / (baud_rate * 16);
-    uint16_t div_mantissa = (uint16_t)usartdiv;
-    uint16_t div_fraction = (uint16_t)((usartdiv - div_mantissa) * 16 + 0.5f);
-    return (uint32_t)USART_BRR(div_mantissa, div_fraction);
+    uint32_t usartdiv = (usart_clk + (baud_rate / 2)) / baud_rate;
+    uint32_t mantissa = usartdiv / 16;
+    uint32_t fraction = usartdiv - (mantissa * 16);
+
+    return USART_BRR(mantissa, fraction);
 }
+
 
 void setup_uart(UART_Config_t *cfg, uint32_t usart_clk)
 {

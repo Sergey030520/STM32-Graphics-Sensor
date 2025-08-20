@@ -91,6 +91,6 @@ void set_enabled_dma(DMA_Type *dma, DMA_Channel channel, uint8_t enable);
 void reset_flags_dma(DMA_Type *dma, DMA_Channel channel);
 
 
-void DMA2_Stream3_IRQHandler();
-void DMA2_Stream4_IRQHandler();
-void DMA2_Stream7_IRQHandler();
+void DMA1_Stream3_IRQHandler();
+void DMA1_Channel4_IRQHandler();
+void DMA1_Stream7_IRQHandler();

@@ -5,6 +5,7 @@
 
 void init_timer()
 {
+    enable_and_reset_rcc(RCC_BUS_APB1, RCC_APB1ENR_TIM2);
     RCC_Frequencies rcc_clocks = {0};
     RCC_BusConfig rcc_config = {0};
     get_clock_frequencies(&rcc_clocks);
@@ -15,7 +16,7 @@ void init_timer()
     uint32_t timer_clk = rcc_clocks.APB1_Freq;
     if (rcc_config.apb1_prescaler > 1)
         timer_clk *= 2;
-    timer->PSC = (timer_clk / 1000) - 1;
+    timer->PSC = ((timer_clk + 500) / 1000) - 1;
     timer->CR1 |= TIMER_CR1_ARPE;
     timer->EGR = TIMER_EGR_UG;
 }

@@ -49,7 +49,10 @@ typedef struct
 #define RCC_CFGR_SWS(source) (source << 2)
 #define RCC_CFGR_SWS_MASK RCC_CFGR_SWS(0x3)
 
-#define RCC_CFGR_PLLXTPRE(val) (val << 17)
+
+#define RCC_CFGR_PLLXTPRE (0x1 << 17)
+#define RCC_CFGR_PLLXTPRE_MASK RCC_CFGR_PLLXTPRE
+
 #define RCC_CFGR_PLLSRC(source) (source << 16)
 
 #define RCC_CFGR_PLLMUL(val) ((uint32_t)val << 18U)
@@ -74,7 +77,7 @@ typedef enum
     RCC_PLL_MUL16
 } RCC_PLLMul;
 
-#define RCC_CFGR_PLLXTPRE_MASK RCC_CFGR_PLLXTPRE(1)
+
 #define RCC_CFGR_PLLSRC_MASK RCC_CFGR_PLLSRC(1)
 
 #define RCC_CFGR_ADCPRE(value) (value << 14)
@@ -126,61 +129,61 @@ typedef enum {
 } USB_Prescaler_t;
 
 // APB2ENR
-#define RCC_TIM11EN (0x1 << 21)
-#define RCC_TIM10EN (0x1 << 20)
-#define RCC_TIM9EN (0x1 << 19)
-#define RCC_ADC3EN (0x1 << 15)
-#define RCC_USART1EN (0x1 << 14)
-#define RCC_TIM8EN (0x1 << 13)
-#define RCC_SPI1EN (0x1 << 12)
-#define RCC_TIM1EN (0x1 << 11)
-#define RCC_ADC2EN (0x1 << 10)
-#define RCC_ADC1EN (0x1 << 9)
-#define RCC_IOPGEN (0x1 << 8)
-#define RCC_IOPFEN (0x1 << 7)
-#define RCC_IOPEEN (0x1 << 6)
-#define RCC_IOPDEN (0x1 << 5)
-#define RCC_IOPCEN (0b1 << 4)
-#define RCC_IOPBEN (0x1 << 3)
-#define RCC_IOPAEN (0x1 << 2)
-#define RCC_AFIOEN (0x1 << 0)
+#define RCC_APB2ENR_TIM11EN (0x1 << 21)
+#define RCC_APB2ENR_TIM10EN (0x1 << 20)
+#define RCC_APB2ENR_TIM9EN (0x1 << 19)
+#define RCC_APB2ENR_ADC3EN (0x1 << 15)
+#define RCC_APB2ENR_USART1EN (0x1 << 14)
+#define RCC_APB2ENR_TIM8EN (0x1 << 13)
+#define RCC_APB2ENR_SPI1EN (0x1 << 12)
+#define RCC_APB2ENR_TIM1EN (0x1 << 11)
+#define RCC_APB2ENR_ADC2EN (0x1 << 10)
+#define RCC_APB2ENR_ADC1EN (0x1 << 9)
+#define RCC_APB2ENR_IOPGEN (0x1 << 8)
+#define RCC_APB2ENR_IOPFEN (0x1 << 7)
+#define RCC_APB2ENR_IOPEEN (0x1 << 6)
+#define RCC_APB2ENR_IOPDEN (0x1 << 5)
+#define RCC_APB2ENR_IOPCEN (0x1 << 4)
+#define RCC_APB2ENR_IOPBEN (0x1 << 3)
+#define RCC_APB2ENR_IOPAEN (0x1 << 2)
+#define RCC_APB2ENR_AFIOEN (0x1 << 0)
 
 // APB1ENR
 
-#define RCC_DACEN (0x1 << 29)
-#define RCC_PWREN (0x1 << 28)
-#define RCC_BKPEN (0x1 << 27)
-#define RCC_CANEN (0x1 << 25)
+#define RCC_APB1ENR_DACEN (0x1 << 29)
+#define RCC_APB1ENR_PWREN (0x1 << 28)
+#define RCC_APB1ENR_BKPEN (0x1 << 27)
+#define RCC_APB1ENR_CANEN (0x1 << 25)
 
-#define RCC_USBEN (0x1 << 23)
-#define RCC_I2C2EN (0x1 << 22)
-#define RCC_I2C1EN (0b1 << 21)
-#define RCC_UART5EN (0x1 << 20)
-#define RCC_UART4EN (0x1 << 19)
-#define RCC_USART3EN (0x1 << 18)
-#define RCC_USART2EN (0x1 << 17)
-#define RCC_SPI3EN (0x1 << 15)
-#define RCC_SPI2EN (0x1 << 14)
-#define RCC_WWDGEN (0x1 << 11)
-#define RCC_TIM14 (0x1 << 8)
-#define RCC_TIM13 (0x1 << 7)
-#define RCC_TIM12 (0x1 << 6)
-#define RCC_TIM7 (0x1 << 5)
-#define RCC_TIM6 (0x1 << 4)
-#define RCC_TIM5 (0x1 << 3)
-#define RCC_TIM4 (0x1 << 2)
-#define RCC_TIM3 (0x1 << 1)
-#define RCC_TIM2 (0x1 << 0)
+#define RCC_APB1ENR_USBEN (0x1 << 23)
+#define RCC_APB1ENR_I2C2EN (0x1 << 22)
+#define RCC_APB1ENR_I2C1EN (0x1 << 21)
+#define RCC_APB1ENR_UART5EN (0x1 << 20)
+#define RCC_APB1ENR_UART4EN (0x1 << 19)
+#define RCC_APB1ENR_USART3EN (0x1 << 18)
+#define RCC_APB1ENR_USART2EN (0x1 << 17)
+#define RCC_APB1ENR_SPI3EN (0x1 << 15)
+#define RCC_APB1ENR_SPI2EN (0x1 << 14)
+#define RCC_APB1ENR_WWDGEN (0x1 << 11)
+#define RCC_APB1ENR_TIM14 (0x1 << 8)
+#define RCC_APB1ENR_TIM13 (0x1 << 7)
+#define RCC_APB1ENR_TIM12 (0x1 << 6)
+#define RCC_APB1ENR_TIM7 (0x1 << 5)
+#define RCC_APB1ENR_TIM6 (0x1 << 4)
+#define RCC_APB1ENR_TIM5 (0x1 << 3)
+#define RCC_APB1ENR_TIM4 (0x1 << 2)
+#define RCC_APB1ENR_TIM3 (0x1 << 1)
+#define RCC_APB1ENR_TIM2 (0x1 << 0)
 
 // AHBENR
 
-#define RCC_SDIOEN (0x1 << 10)
-#define RCC_FSMCEN (0x1 << 8)
-#define RCC_CRCEN (0x1 << 6)
-#define RCC_FLITFEN (0x1 << 4)
-#define RCC_SRAMEN (0x1 << 2)
-#define RCC_DMA2EN (0x1 << 1)
-#define RCC_DMA1EN (0x1 << 0)
+#define RCC_AHBENR_SDIOEN (0x1 << 10)
+#define RCC_AHBENR_FSMCEN (0x1 << 8)
+#define RCC_AHBENR_CRCEN (0x1 << 6)
+#define RCC_AHBENR_FLITFEN (0x1 << 4)
+#define RCC_AHBENR_SRAMEN (0x1 << 2)
+#define RCC_AHBENR_DMA2EN (0x1 << 1)
+#define RCC_AHBENR_DMA1EN (0x1 << 0)
 
 typedef enum
 {
@@ -251,4 +254,4 @@ void enable_gpio_clock_rcc(RCC_PeripheralClockConfig *config);
 void get_clock_frequencies(RCC_Frequencies *freq);
 void enable_and_reset_rcc(RCC_Bus bus, uint32_t periph_mask);
 void get_rcc_clock_dividers(RCC_BusConfig *config);
-uint32_t get_pll48clk_freq();
+RCC_ClockSource get_sysclk_source();

@@ -12,9 +12,9 @@ static inline void __enable_irq(void)
 
 void init_irq()
 {
-    NVIC->ISERx[0] = NVIC_DMA1_CHANNEL3; // NVIC_DMA1_CHANNEL3; // DMA1|_Channel_5
-    NVIC->ISERx[1] = NVIC_SPI1;          // | NVIC_SPI1;                   //| NVIC_USART1;
-    
+    // NVIC->ISERx[0] = NVIC_DMA1_CHANNEL3; // NVIC_DMA1_CHANNEL3; // DMA1|_Channel_5
+    // NVIC->ISERx[1] = NVIC_SPI1;          // | NVIC_SPI1;                   //| NVIC_USART1;
+    enable_irq_nvic(DMA1_Channel4_IRQ,6);
     __enable_irq();
 }
 
@@ -24,7 +24,7 @@ void enable_irq_nvic(uint8_t irqn, uint8_t priority)
     NVIC->IPRx[irqn] = (priority & 0xF) << 4;
 
     // Разрешаем прерывани
-    NVIC->ISERx[irqn / 32] = (1UL << (irqn % 32));
+    NVIC->ISERx[irqn / 32] |= (1UL << (irqn % 32));
 }
 void disable_irq_nvic(uint8_t irqn)
 {

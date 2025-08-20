@@ -4,7 +4,7 @@
 #include "memory_map.h"
 
 // --- LED ---
-#define LED_PORT       GPIOB_REG
+#define LED_PORT       GPIOC_REG
 #define LED_PIN        13
 
 // --- USART1 ---

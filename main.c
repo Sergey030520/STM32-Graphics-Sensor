@@ -10,29 +10,41 @@
 #include "log.h"
 #include "timer.h"
 
-
-
 int init_rcc();
 int init_board();
 int usart_adapter(const char *data, int length);
 void init_uart();
 
+void print_clock_frequencies();
+
 int main()
 {
-
     int status = init_board();
-
     if (status != 0)
     {
-        init_led();
         ledOn(1);
         goto error;
     }
-    LOG_INFO("Драйверы запущены");
-    ledOn(0);
+
+    LOG_INFO("Драйверы запущены\r\n");
+    print_clock_frequencies();
+    while (1)
+    {
+        // Включить LED (PC13 = 0)
+        ledOn(1);
+        // send_byte_usart(0x11);
+        delay_timer(1000);
+        // for (volatile int i = 0; i < 500000; i++)
+            // ;
+
+        // Выключить LED (PC13 = 1)
+        ledOn(0);
+        // send_byte_usart(0x12);
+        delay_timer(1000);
+    }
 
     // init_spi_master();
- 
+
     // st7789_init();
 
     //
@@ -72,14 +84,14 @@ int main()
 
     while (1)
     {
-        LOG_INFO("STMf103");
+        // LOG_INFO("STMf103");
         // delay_timer(2000);
-        return 0;
     }
 
 error:
     while (1)
         ;
+
     return 0;
 }
 
@@ -111,7 +123,7 @@ int init_rcc()
     {
         pll_config.source = RCC_HSI;
         pll_config.mul_factor = RCC_PLL_MUL12;
-        
+
         bus_config.ahb_prescaler = RCC_NOT_DIV;
         bus_config.adc_prescaler = RCC_ADCPRE_DIV4;
         bus_config.apb1_prescaler = RCC_APB_DIV2;
@@ -131,9 +143,9 @@ int init_rcc()
             status = setup_system_config_rcc(&system_config);
         }
     }
-    peripheral_conf.APB2 = RCC_IOPCEN | RCC_IOPAEN | RCC_IOPBEN | RCC_USART1EN;
-    peripheral_conf.APB1 = RCC_I2C1EN;
-    peripheral_conf.AHB = RCC_FLITFEN | RCC_SRAMEN | RCC_DMA1EN;
+    peripheral_conf.APB2 = RCC_APB2ENR_IOPAEN | RCC_APB2ENR_IOPBEN | RCC_APB2ENR_USART1EN;
+    peripheral_conf.APB1 = RCC_APB1ENR_I2C1EN;
+    peripheral_conf.AHB = RCC_AHBENR_FLITFEN | RCC_AHBENR_SRAMEN | RCC_AHBENR_DMA1EN;
     enable_gpio_clock_rcc(&peripheral_conf);
     return status;
 }
@@ -141,7 +153,6 @@ int init_rcc()
 int init_board()
 {
     int status = 0;
-    RCC_Frequencies rcc_clocks = {0};
 
     init_irq();
 
@@ -151,10 +162,8 @@ int init_board()
 
     if (status != 0)
     {
-        ledOn(1);
         return -1;
     }
-
 
     init_timer();
 
@@ -162,6 +171,7 @@ int init_board()
 
     stm_init_log(usart_adapter);
 
+    init_spi();
 
     return 0;
 }
@@ -175,8 +185,8 @@ int usart_adapter(const char *data, int length)
 void init_uart()
 {
     DMA_Config dma_tx_config = {
-        .dma = DMA1_REG,         
-        .channel = CHANNEL_4, 
+        .dma = DMA1_REG,
+        .channel = CHANNEL_4,
         .direction = DMA_DIR_MEM_TO_PERIPH,
         .mem_size = DMA_MSIZE_8BITS,
         .periph_size = DMA_PSIZE_8BITS,
@@ -189,14 +199,14 @@ void init_uart()
         .pin = USART1_TX_PIN,
         .speed = GPIO_OUTPUT_50MHz,
         .pin_mode = GPIO_OUTPUT_AF_PP,
-        .af_remap =  0,
+        .af_remap = 0,
     };
     GPIO_PinConfig_t rx_pin_config = {
         .gpiox = USART1_RX_PORT,
         .pin = USART1_RX_PIN,
         .speed = GPIO_MODE_INPUT,
         .pin_mode = GPIO_INPUT_PUPD,
-        .af_remap =  0,
+        .af_remap = 0,
     };
 
     // Основная конфигурация UART
@@ -216,4 +226,19 @@ void init_uart()
     get_clock_frequencies(&rcc_clocks);
 
     setup_uart(&uart1_config, rcc_clocks.APB2_Freq);
+}
+
+void print_clock_frequencies()
+{
+    RCC_Frequencies freq = {0};
+    get_clock_frequencies(&freq);
+
+    LOG_INFO("SYSCLK: %lu Hz\r\n", freq.SYSCLK_Freq);
+    LOG_INFO("HCLK  : %lu Hz\r\n", freq.HCLK_Freq);
+    LOG_INFO("APB1  : %lu Hz\r\n", freq.APB1_Freq);
+    LOG_INFO("APB2  : %lu Hz\r\n", freq.APB2_Freq);
+    LOG_INFO("USB  : %lu Hz\r\n", freq.USB_Freq);
+    LOG_INFO("ADC  : %lu Hz\r\n", freq.ADC_Freq);
+    LOG_INFO("source: %d\r\n", get_sysclk_source());
+    
 }

@@ -47,7 +47,7 @@ void dma_init(DMA_Config *cfg)
 
     DMA_Channel_Settings *ch = &cfg->dma->channels[cfg->channel - 1];
 
-    // Выключаем канал перед настройкой
+    // Выключаем канал
     ch->CCR &= ~DMA_EN;
     while (ch->CCR & DMA_EN)
         ;
@@ -77,7 +77,7 @@ void dma_init(DMA_Config *cfg)
 
 uint8_t is_dma_channel_busy(uint8_t dma_idx, DMA_Channel channel)
 {
-    return dma_channels_busy[dma_idx][channel];
+    return dma_channels_busy[dma_idx][channel - 1];
 }
 
 void dma_send(DMA_Config *cfg, void *buffer, uint32_t length)
@@ -97,6 +97,10 @@ void dma_send(DMA_Config *cfg, void *buffer, uint32_t length)
 
     reset_flags_dma(cfg->dma, cfg->channel);
 
+    ch->CCR &= ~DMA_DIR_MEMORY;
+    if (cfg->direction == DMA_DIR_MEM_TO_PERIPH)
+        ch->CCR |= DMA_DIR_MEMORY;
+
     ch->CMAR = (uint32_t)buffer;
     ch->CNDTR = length;
 
@@ -105,27 +109,29 @@ void dma_send(DMA_Config *cfg, void *buffer, uint32_t length)
     ch->CCR |= DMA_EN;
 }
 
-void DMA2_Channel7_IRQHandler()
+void DMA1_Channel4_IRQHandler()
 {
-    DMA_Channel_Settings *ch = &DMA2->channels[6];
-    DMA_Type *dma = DMA2;
+    DMA_Type *dma = DMA1;
+    DMA_Channel_Settings *ch = &dma->channels[CHANNEL_4 - 1];
+    uint8_t dma_idx = 0;
 
-    if (dma->ISR & DMA_SR_CTCIFx(CHANNEL_7))
+    if (dma->ISR & DMA_SR_TCIFx(CHANNEL_4))
     {
-        dma->IFCR |= DMA_IFCR_CTCIFx(CHANNEL_7);
+        dma->IFCR |= DMA_IFCR_CTCIFx(CHANNEL_4);
         ch->CCR &= ~DMA_EN;
-        dma_channels_busy[1][6] = 0;
+        dma_channels_busy[dma_idx][CHANNEL_4 - 1] = 0;
     }
 
-    if (dma->ISR & DMA_SR_CTEIFx(CHANNEL_7))
+    if (dma->ISR & DMA_SR_TEIFx(CHANNEL_4))
     {
-        dma->IFCR |= DMA_IFCR_CTEIFx(CHANNEL_7);
-        dma_channels_busy[1][6] = 0;
+        dma->IFCR |= DMA_IFCR_CTEIFx(CHANNEL_4);
+        ch->CCR &= ~DMA_EN;
+        dma_channels_busy[dma_idx][CHANNEL_4 - 1] = 0;
     }
 
-    if (dma->ISR & DMA_SR_CHTIFx(CHANNEL_7))
-        dma->IFCR |= DMA_IFCR_CHTIFx(CHANNEL_7);
+    if (dma->ISR & DMA_SR_HTIFx(CHANNEL_4))
+        dma->IFCR |= DMA_IFCR_CHTIFx(CHANNEL_4);
 
-    if (dma->ISR & DMA_SR_CGIFx(CHANNEL_7))
-        dma->IFCR |= DMA_IFCR_CGIFx(CHANNEL_7);
+    if (dma->ISR & DMA_SR_GIFx(CHANNEL_4))
+        dma->IFCR |= DMA_IFCR_CGIFx(CHANNEL_4);
 }
