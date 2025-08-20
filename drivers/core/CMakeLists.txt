@@ -9,6 +9,7 @@ add_library(${LIBRARY_CORE_NAME} STATIC
     rcc.h rcc.c
     led.h led.c
     timer.h timer.c
+    spi.h spi_master.c
     usart.h usart.c
     dma.h dma.c
     IRQ.h IRQ.c

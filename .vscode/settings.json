@@ -6,6 +6,7 @@
         "compare": "c",
         "cstdint": "c",
         "led.h": "c",
-        "memory_map.h": "c"
+        "memory_map.h": "c",
+        "stdio.h": "c"
     }
 }

@@ -4,16 +4,22 @@
 #include "usart.h"
 #include "dma.h"
 #include "board_pins.h"
-// #include "spi.h"
+#include "spi.h"
 // #include "tft.h"
 #include "IRQ.h"
 #include "log.h"
 #include "timer.h"
 
+
+
+
+
+
 int init_rcc();
 int init_board();
 int usart_adapter(const char *data, int length);
 void init_uart();
+
 
 void print_clock_frequencies();
 
@@ -35,7 +41,7 @@ int main()
         // send_byte_usart(0x11);
         delay_timer(1000);
         // for (volatile int i = 0; i < 500000; i++)
-            // ;
+        // ;
 
         // Выключить LED (PC13 = 1)
         ledOn(0);
@@ -240,5 +246,6 @@ void print_clock_frequencies()
     LOG_INFO("USB  : %lu Hz\r\n", freq.USB_Freq);
     LOG_INFO("ADC  : %lu Hz\r\n", freq.ADC_Freq);
     LOG_INFO("source: %d\r\n", get_sysclk_source());
-    
 }
+
+

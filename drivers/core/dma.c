@@ -109,29 +109,74 @@ void dma_send(DMA_Config *cfg, void *buffer, uint32_t length)
     ch->CCR |= DMA_EN;
 }
 
-void DMA1_Channel4_IRQHandler()
+void dma_set_memory(DMA_Config *cfg, uint32_t mem_addr, uint32_t length)
 {
-    DMA_Type *dma = DMA1;
-    DMA_Channel_Settings *ch = &dma->channels[CHANNEL_4 - 1];
-    uint8_t dma_idx = 0;
+    if (!cfg || !cfg->dma)
+        return;
 
-    if (dma->ISR & DMA_SR_TCIFx(CHANNEL_4))
-    {
-        dma->IFCR |= DMA_IFCR_CTCIFx(CHANNEL_4);
-        ch->CCR &= ~DMA_EN;
-        dma_channels_busy[dma_idx][CHANNEL_4 - 1] = 0;
-    }
+    DMA_Channel_Settings *ch = &cfg->dma->channels[cfg->channel - 1];
 
-    if (dma->ISR & DMA_SR_TEIFx(CHANNEL_4))
-    {
-        dma->IFCR |= DMA_IFCR_CTEIFx(CHANNEL_4);
-        ch->CCR &= ~DMA_EN;
-        dma_channels_busy[dma_idx][CHANNEL_4 - 1] = 0;
-    }
-
-    if (dma->ISR & DMA_SR_HTIFx(CHANNEL_4))
-        dma->IFCR |= DMA_IFCR_CHTIFx(CHANNEL_4);
-
-    if (dma->ISR & DMA_SR_GIFx(CHANNEL_4))
-        dma->IFCR |= DMA_IFCR_CGIFx(CHANNEL_4);
+    ch->CMAR = mem_addr;
+    ch->CNDTR = length;
 }
+
+void dma_start(DMA_Config *cfg)
+{
+    if (!cfg || !cfg->dma)
+        return;
+
+    DMA_Channel_Settings *ch = &cfg->dma->channels[cfg->channel - 1];
+    uint8_t dma_idx = (cfg->dma == DMA2) ? 1 : 0;
+
+    while (is_dma_channel_busy(dma_idx, cfg->channel))
+        ;
+
+    ch->CCR &= ~DMA_EN;
+    while (ch->CCR & DMA_EN)
+        ;
+
+    reset_flags_dma(cfg->dma, cfg->channel);
+
+    dma_channels_busy[dma_idx][cfg->channel - 1] = 1;
+
+    ch->CCR |= DMA_EN;
+}
+
+uint8_t dma_transfer_complete(DMA_Config *cfg)
+{
+    if (!cfg || !cfg->dma)
+        return 0;
+
+    uint8_t dma_idx = (cfg->dma == DMA2) ? 1 : 0;
+
+    return !dma_channels_busy[dma_idx][cfg->channel - 1];
+}
+
+void dma_channel_irq_handler(DMA_Type *dma, uint8_t dma_idx, DMA_Channel channel)
+{
+    DMA_Channel_Settings *ch = &dma->channels[channel - 1];
+
+    if (dma->ISR & DMA_SR_TCIFx(channel))
+    {
+        dma->IFCR |= DMA_IFCR_CTCIFx(channel);
+        ch->CCR &= ~DMA_EN;
+        dma_channels_busy[dma_idx][channel - 1] = 0;
+    }
+
+    if (dma->ISR & DMA_SR_TEIFx(channel))
+    {
+        dma->IFCR |= DMA_IFCR_CTEIFx(channel);
+        ch->CCR &= ~DMA_EN;
+        dma_channels_busy[dma_idx][channel - 1] = 0;
+    }
+
+    if (dma->ISR & DMA_SR_HTIFx(channel))
+        dma->IFCR |= DMA_IFCR_CHTIFx(channel);
+
+    if (dma->ISR & DMA_SR_GIFx(channel))
+        dma->IFCR |= DMA_IFCR_CGIFx(channel);
+}
+
+void DMA1_Channel2_IRQHandler() { dma_channel_irq_handler(DMA1, 0, CHANNEL_2); }
+void DMA1_Channel3_IRQHandler() { dma_channel_irq_handler(DMA1, 0, CHANNEL_3); }
+void DMA1_Channel4_IRQHandler() { dma_channel_irq_handler(DMA1, 0, CHANNEL_4); }

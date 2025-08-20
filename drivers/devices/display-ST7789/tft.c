@@ -1,57 +1,53 @@
 #include "tft.h"
-#include "spi.h"
-#include "timer.h"
-#include "configuration.h"
-#include "led.h"
+#include <stdio.h>
 
 // Res port - 0 - reset, 1 - start (PA1)
 // DC - Data command (1 - data, 0 - command) (PA2)
 // BLK - 1 - light, 0 - without light (PB6)
 
-#define RES_Port 1 // PA1
-#define DC_Port 2  // PA2
-#define BLK_Port 6 // PB6
 
-void set_state_port(uint16_t port, int state)
-{
-    if (state == 0)
-    {
-        gpioa->BSRR |= (0x1 << (port + 16));
-    }
-    else
-    {
-        gpioa->BSRR |= (0x1 << port);
-    }
-}
+
+TFT_Interface_t *tft_if = NULL;
 
 void send_command(uint8_t command)
 {
-    set_state_port(DC_Port, 0);
-    send_data_spi_dma(&command, 1);
+    if (tft_if == NULL)
+        return;
+    tft_if->set_dc(0);
+    tft_if->spi_send(&command, 1);
 }
 void send_data_array_command(uint8_t *data, uint32_t size)
 {
-    set_state_port(DC_Port, 1);
-    send_data_spi_dma(data, size);
+    if (tft_if == NULL)
+        return;
+    tft_if->set_dc(1);
+    tft_if->spi_send(&data, size);
 }
 
 void send_data_command(uint8_t data)
 {
-    set_state_port(DC_Port, 1);
-    send_data_spi_dma(&data, 1);
+    if (tft_if == NULL)
+        return;
+    tft_if->set_dc(1);
+    tft_if->spi_send(&data, 1);
 }
 
 void hard_reset()
 {
-    set_state_port(RES_Port, 0);
-    delay_timer(10);
-    set_state_port(RES_Port, 1);
-    delay_timer(150);
+    if (tft_if == NULL)
+        return;
+    tft_if->set_res(0);
+    tft_if->delay_ms(10);
+    tft_if->set_res(1);
+    tft_if->delay_ms(150);
 }
+
 void soft_reset()
 {
+    if (tft_if == NULL)
+        return;
     send_command(CMD_SWRESET);
-    delay_timer(100);
+    tft_if->delay_ms(100);
 }
 
 void sleep_mode_display(int state)
@@ -64,7 +60,7 @@ void sleep_mode_display(int state)
     {
         send_command(CMD_SLPOUT);
     }
-    delay_timer(200);
+    tft_if->delay_ms(200);
 }
 
 void inversion_mode(int state)
@@ -146,11 +142,6 @@ void set_porch_settings()
     send_data_array_command(porch_settings, sizeof(porch_settings));
 }
 
-void set_brightness(uint8_t volume)
-{
-    GP_Timer_Type1 *timer = TIM4_Reg;
-    timer->CCR1 = volume;
-}
 
 void set_column_display(uint16_t startX, uint16_t endX)
 {
@@ -409,31 +400,14 @@ void clear_screen()
     fill_color_display(RGB565(0, 0, 0));
 }
 
-void init_brightness()
+
+void st7789_init(TFT_Interface_t *tft_interface)
 {
-    gpiob->CRL |= GPIO_CRL_CNF_MODE(BLK_Port, GPIO_MODE_SPEED_50MHz, GPIO_AF_PUSH_PULL);
+    if(tft_interface == NULL){
+        return;
+    }
+    tft_if = tft_interface;
 
-    GP_Timer_Type1 *timer = TIM4_Reg;
-    timer->CR1 = 0;
-
-    timer->CR1 = 0;
-    timer->CNT = 0;
-
-    timer->PSC = 36;
-    timer->ARR = 99;
-    timer->CCMR1 |= TIMER_CCMRx_OC1M_PWM << 4;
-    timer->CCER |= TIMER_CCER_CCx(TIM_CHANNEL1, 0);
-    timer->CR1 |= TIMER_CR1_ARPE | TIMER_CR1_CEN;
-
-    set_brightness(100);
-}
-
-void st7789_init()
-{
-    gpioa->CRL &= ~(GPIO_MASK_PORT_CRL(RES_Port) | GPIO_MASK_PORT_CRL(DC_Port));
-
-    gpioa->CRL |= GPIO_CRL_CNF_MODE(RES_Port, GPIO_MODE_SPEED_50MHz, GPIO_OUTPUT_PUSH_PULL);
-    gpioa->CRL |= GPIO_CRL_CNF_MODE(DC_Port, GPIO_MODE_SPEED_50MHz, GPIO_OUTPUT_PUSH_PULL);
 
     hard_reset();
 
@@ -442,7 +416,7 @@ void st7789_init()
     sleep_mode_display(0);
 
     set_color_mode(BIT_PIXEl_16 | COLOR_MODE_65K);
-    delay_timer(10);
+    tft_if->delay_ms(10);
 
     inversion_mode(1);
 
@@ -452,7 +426,7 @@ void st7789_init()
 
     set_display_power(1);
 
-    delay_timer(100);
+    tft_if->delay_ms(100);
 
     init_brightness();
 }

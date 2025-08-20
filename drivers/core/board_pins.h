@@ -33,6 +33,8 @@
 #define SPI2_CS_PORT   GPIOB_REG
 #define SPI2_CS_PIN    12
 
+
+
 // --- I2C1 ---
 #define I2C1_SCL_PORT  GPIOB_REG
 #define I2C1_SCL_PIN   6
