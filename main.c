@@ -4,14 +4,11 @@
 #include "usart.h"
 #include "dma.h"
 #include "board_pins.h"
-#include "spi.h"
-// #include "tft.h"
 #include "IRQ.h"
 #include "log.h"
 #include "timer.h"
-
-
-
+#include "spi_board.h"
+#include "tft_board.h"
 
 
 
@@ -19,12 +16,11 @@ int init_rcc();
 int init_board();
 int usart_adapter(const char *data, int length);
 void init_uart();
-
-
 void print_clock_frequencies();
 
 int main()
 {
+
     int status = init_board();
     if (status != 0)
     {
@@ -33,11 +29,23 @@ int main()
     }
 
     LOG_INFO("Драйверы запущены\r\n");
+
     print_clock_frequencies();
+
+    TFT_Interface_t tft_if = {0};
+
+    tft_init_board_interface(&tft_if);
+
+    fill_color_display(RGB565(0, 0, 255));
+    
+
+    // draw_line(160,50, 0, 67, RGB565(255, 0, 0));
+
     while (1)
     {
         // Включить LED (PC13 = 0)
         ledOn(1);
+
         // send_byte_usart(0x11);
         delay_timer(1000);
         // for (volatile int i = 0; i < 500000; i++)
@@ -57,7 +65,7 @@ int main()
     // 63 g, 31 r, 31 - b
     // uint16_t color = 0xF8;
 
-    // fill_color_display(RGB565(0, 0, 255));
+    //
     // fill(0, 0, 239, 239, RGB565(0, 255, 0));
 
     // draw_line(160,50, 0, 67, RGB565(255, 0, 0));
@@ -149,8 +157,8 @@ int init_rcc()
             status = setup_system_config_rcc(&system_config);
         }
     }
-    peripheral_conf.APB2 = RCC_APB2ENR_IOPAEN | RCC_APB2ENR_IOPBEN | RCC_APB2ENR_USART1EN;
-    peripheral_conf.APB1 = RCC_APB1ENR_I2C1EN;
+    peripheral_conf.APB2 = RCC_APB2ENR_IOPAEN | RCC_APB2ENR_IOPBEN | RCC_APB2ENR_USART1EN |  RCC_APB2ENR_SPI1EN;
+    peripheral_conf.APB1 = RCC_APB1ENR_I2C1EN | RCC_APB1ENR_TIM4EN;
     peripheral_conf.AHB = RCC_AHBENR_FLITFEN | RCC_AHBENR_SRAMEN | RCC_AHBENR_DMA1EN;
     enable_gpio_clock_rcc(&peripheral_conf);
     return status;
@@ -194,8 +202,8 @@ void init_uart()
         .dma = DMA1_REG,
         .channel = CHANNEL_4,
         .direction = DMA_DIR_MEM_TO_PERIPH,
-        .mem_size = DMA_MSIZE_8BITS,
-        .periph_size = DMA_PSIZE_8BITS,
+        .mem_size = DMA_DATASIZE_8BIT,
+        .periph_size = DMA_DATASIZE_8BIT,
         .inc_mem = 1,
         .inc_periph = 0,
         .circular = 0};
@@ -219,13 +227,12 @@ void init_uart()
     UART_Config_t uart1_config = {
         .usart = USART1_REG,
         .baud_rate = UART_BAUDRATE_9600,
-        .tx_mode = UART_MODE_POLLING,
+        .tx_mode = UART_MODE_DMA,
         .rx_mode = UART_MODE_POLLING,
-        .dma_tx = dma_tx_config,   // DMA конфигурация для TX
-        .dma_rx = {0},             // RX DMA не используется
-        .tx_port = &tx_pin_config, // Пин TX
-        .rx_port = &rx_pin_config  // Пин RX (можно NULL, если RX отключен)
-    };
+        .dma_tx = dma_tx_config,
+        .dma_rx = {0},
+        .tx_port = &tx_pin_config,
+        .rx_port = &rx_pin_config};
 
     RCC_Frequencies rcc_clocks = {0};
 
@@ -247,5 +254,3 @@ void print_clock_frequencies()
     LOG_INFO("ADC  : %lu Hz\r\n", freq.ADC_Freq);
     LOG_INFO("source: %d\r\n", get_sysclk_source());
 }
-
-

@@ -146,7 +146,6 @@ typedef struct
 
 int setup_spi(SPI_Config_t *cfg, uint32_t spi_clk);
 
-int send_data_spi_master(SPI_Config_t *cfg, uint16_t *data, uint32_t size);
-int recv_data_spi_master(SPI_Config_t *cfg, uint16_t *buffer, uint32_t size);
-int spi_master_send_dma(SPI_Config_t *cfg);
-int spi_master_recv_dma(SPI_Config_t *cfg);
+int send_data_spi_master(SPI_Config_t *cfg);
+int recv_data_spi_master(SPI_Config_t *cfg);
+

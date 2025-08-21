@@ -3,26 +3,18 @@
 #pragma once
 
 // CCR
-#define DMA_MEM2MEM (0x1 << 14)
-#define DMA_PL_LOW (0b00 << 12)
-#define DMA_PL_MEDIUM (0b01 << 12)
-#define DMA_PL_HIGH (0b10 << 12)
-#define DMA_PL_VERY_HIGH (0b11 << 12)
-#define DMA_MSIZE_8BITS (0x00 << 10)
-#define DMA_MSIZE_16BITS (0x01 << 10)
-#define DMA_MSIZE_32BITS (0x10 << 10)
-#define DMA_PSIZE_8BITS (0x00 << 8)
-#define DMA_PSIZE_16BITS (0x01 << 8)
-#define DMA_PSIZE_32BITS (0x10 << 8)
-#define DMA_MINC (0x1 << 7)
-#define DMA_PINC (0x1 << 6)
-#define DMA_CIRC (0x1 << 5)
-#define DMA_DIR_MEMORY (0x1 << 4)
-#define DMA_DIR_PERIPHERAL (0x0 << 4)
-#define DMA_TEIE (0x1 << 3)
-#define DMA_HTIE (0x1 << 2)
-#define DMA_TCIE (0x1 << 1)
-#define DMA_EN (0x1 << 0)
+#define DMA_CCR_MEM2MEM (0x1 << 14)
+#define DMA_CCR_PL(priority) ((priority & 0x3) << 12)
+#define DMA_CCR_MSIZE(size) ((size & 0x3) << 10)
+#define DMA_CCR_PSIZE(size) ((size & 0x3) << 8)
+#define DMA_CCR_MINC (0x1 << 7)
+#define DMA_CCR_PINC (0x1 << 6)
+#define DMA_CCR_CIRC (0x1 << 5)
+#define DMA_CCR_DIR(dir) ((dir & 0x1) << 4)
+#define DMA_CCR_TEIE (0x1 << 3)
+#define DMA_CCR_HTIE (0x1 << 2)
+#define DMA_CCR_TCIE (0x1 << 1)
+#define DMA_CCR_EN (0x1 << 0)
 
 // SR
 #define DMA_SR_TEIFx(channel) (0x1 << ((channel - 1) * 4 + 3))
@@ -47,7 +39,6 @@ typedef enum
     CHANNEL_7 = 7,
 } DMA_Channel;
 
-
 typedef struct
 {
     uint32_t CCR;   // конфигурация канала
@@ -64,33 +55,54 @@ typedef struct
     DMA_Channel_Settings channels[7];
 } DMA_Type;
 
-typedef enum {
+typedef enum
+{
     DMA_DIR_PERIPH_TO_MEM = 0,
     DMA_DIR_MEM_TO_PERIPH = 1,
 } DMA_Direction;
 
-typedef struct {
+typedef enum
+{
+    DMA_DATASIZE_8BIT = 0x0,
+    DMA_DATASIZE_16BIT = 0x1,
+    DMA_DATASIZE_32BIT = 0x2
+} DMA_DataSize;
+
+typedef enum
+{
+    DMA_PRIORITY_LOW = 0x0,
+    DMA_PRIORITY_MEDIUM = 0x1,
+    DMA_PRIORITY_HIGH = 0x2,
+    DMA_PRIORITY_VERY_HIGH = 0x3
+} DMA_ChannelPriority;
+
+typedef struct
+{
     DMA_Type *dma;
     DMA_Channel channel;
     DMA_Direction direction;
     uint32_t peripheral_addr;
-    uint32_t mem_size; 
-    uint32_t periph_size;
+    DMA_DataSize mem_size;
+    DMA_DataSize periph_size;
+    DMA_ChannelPriority priority;
     uint8_t inc_mem;
     uint8_t inc_periph;
     uint8_t circular;
 } DMA_Config;
 
-typedef void (* dma_callback_t) (void);
-
+typedef void (*dma_callback_t)(void);
 
 void dma_init(DMA_Config *cfg);
-void dma_send(DMA_Config *cfg, void *buffer, uint32_t length);
-
-void set_enabled_dma(DMA_Type *dma, DMA_Channel channel, uint8_t enable);
+void dma_set_memory(DMA_Config *cfg, uint32_t mem_addr, uint32_t length);
+void dma_start(DMA_Config *cfg);
+uint8_t dma_transfer_complete(DMA_Config *cfg);
 void reset_flags_dma(DMA_Type *dma, DMA_Channel channel);
 
 
-void DMA1_Stream3_IRQHandler();
+void DMA1_Channel1_IRQHandler();
+void DMA1_Channel2_IRQHandler();
+void DMA1_Channel3_IRQHandler();
 void DMA1_Channel4_IRQHandler();
-void DMA1_Stream7_IRQHandler();
+void DMA1_Channel5_IRQHandler();
+void DMA1_Channel6_IRQHandler();
+void DMA1_Channel7_IRQHandler();

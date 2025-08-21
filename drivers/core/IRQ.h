@@ -40,7 +40,7 @@ typedef enum
     USART2_IRQ = 38,
     USART3_IRQ = 39,
     ADC3_IRQ = 47,
-};
+}STM8_IRQn;
 
 #define NVIC_DMA1_CHANNEL3 (0x1 << 13)
 #define NVIC_DMA1_CHANNEL4 (0x1 << 14)

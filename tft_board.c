@@ -2,9 +2,9 @@
 #include "gpio.h"
 #include "memory_map.h"
 #include "timer.h"
-#include "tft.h"
 #include "spi_board.h"
 #include <stdlib.h>
+#include "rcc.h"
 
 
 
@@ -51,11 +51,9 @@ void tft_set_brightness(uint8_t value)
     set_pwm_timer(TIM4_REG, value);
 }
 
+
 void tft_init_board_interface(TFT_Interface_t *tft)
 {
-    //  gpiob->CRL |= GPIO_CRL_CNF_MODE(BLK_Port, GPIO_MODE_SPEED_50MHz, GPIO_AF_PUSH_PULL);
-    //  gpioa->CRL |= GPIO_CRL_CNF_MODE(RES_Port, GPIO_MODE_SPEED_50MHz, GPIO_OUTPUT_PUSH_PULL);
-    // gpioa->CRL |= GPIO_CRL_CNF_MODE(DC_Port, GPIO_MODE_SPEED_50MHz, GPIO_OUTPUT_PUSH_PULL);
 
     GPIO_PinConfig_t pin_blk = {
         .gpiox = TFT_BLK_Port,
@@ -78,8 +76,21 @@ void tft_init_board_interface(TFT_Interface_t *tft)
         .pin_mode = GPIO_OUTPUT_GP_PP,
         .af_remap = 0,
     };
+    set_gpio_conf(&pin_blk);
+    set_gpio_conf(&pin_dc);
+    set_gpio_conf(&pin_res);
 
-    tft->set_cs = tft_set_cs;
+
+    PWM_Config_t pwm_cfg = {
+        .channel = TIM_CHANNEL1,
+        .duty_cycle = 50,
+        .period = 99,
+        .prescaler = 36,
+        .timer = TIM4_REG
+    };
+
+    init_pwm_timer(&pwm_cfg);
+
     tft->set_dc = tft_set_dc;
     tft->set_res = tft_set_res;
     tft->set_blk = tft_set_blk;
@@ -87,4 +98,6 @@ void tft_init_board_interface(TFT_Interface_t *tft)
     tft->spi_recv = tft_spi_recv;
     tft->delay_ms = tft_delay_ms;
     tft->set_brightness = tft_set_brightness;
+
+    st7789_init(tft);
 }

@@ -7,6 +7,11 @@
         "cstdint": "c",
         "led.h": "c",
         "memory_map.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "tft_board.h": "c",
+        "spi_board.h": "c",
+        "stdint.h": "c",
+        "spi.h": "c",
+        "log.h": "c"
     }
 }

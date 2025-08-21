@@ -1,10 +1,10 @@
 #pragma once
 
 #include <stdint.h>
+#include "tft.h"
 
 
 // Реализация функций для конкретной платы
-void tft_set_cs(int state);
 void tft_set_dc(int state);
 void tft_set_res(int state);
 void tft_set_blk(int state);

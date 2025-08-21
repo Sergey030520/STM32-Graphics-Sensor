@@ -4,7 +4,7 @@
 #pragma once
 
 #define DISPLAY_WIDTH 240
-#define DISPLAY_HEIGTH 240
+#define DISPLAY_HEIGHT 240
 
 typedef struct
 {
@@ -169,6 +169,6 @@ void fill_color_display(uint16_t color);
 
 void clear_screen();
 
-void st7789_init();
+void st7789_init(TFT_Interface_t *tft_interface);
 
 // https://blog.embeddedexpert.io/?p=1215

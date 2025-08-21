@@ -2,10 +2,9 @@
 #include "memory_map.h"
 #include "rcc.h"
 
-
 void init_timer()
 {
-    enable_and_reset_rcc(RCC_BUS_APB1, RCC_APB1ENR_TIM2);
+    enable_and_reset_rcc(RCC_BUS_APB1, RCC_APB1ENR_TIM2EN);
     RCC_Frequencies rcc_clocks = {0};
     RCC_BusConfig rcc_config = {0};
     get_clock_frequencies(&rcc_clocks);
@@ -39,17 +38,12 @@ void delay_timer(uint32_t ms)
     timer->SR = 0;
 }
 
-
-
 void set_pwm_timer(GP_Timer_Type *timer, uint8_t volume)
 {
     timer->CCR1 = volume;
 }
 
-    // gpiob->CRL |= GPIO_CRL_CNF_MODE(BLK_Port, GPIO_MODE_SPEED_50MHz, GPIO_AF_PUSH_PULL);
 
-    // GP_Timer_Type1 *timer = TIM4_Reg;
-    // set_brightness(100);
 
 void init_pwm_timer(PWM_Config_t *cfg)
 {
@@ -58,13 +52,50 @@ void init_pwm_timer(PWM_Config_t *cfg)
     timer->CR1 = 0;
     timer->CNT = 0;
 
-    // timer->PSC = 36;
-    // timer->ARR = 99;TIM_CHANNEL1
     timer->PSC = cfg->prescaler;
     timer->ARR = cfg->period;
-    
+
+    switch (cfg->channel)
+    {
+    case TIM_CHANNEL1:
+        timer->CCMR1 &= ~(0x7 << 4); 
+        timer->CCMR1 |= TIMER_CCMRx_OC1M_PWM << 4;
+        timer->CCER &= ~0x1;
+        timer->CCER |= 0x1; 
+        timer->CCR1 = (cfg->period + 1) * cfg->duty_cycle / 100;
+        break;
+
+    case TIM_CHANNEL2:
+        timer->CCMR1 &= ~(0x7 << 12); 
+        timer->CCMR1 |= TIMER_CCMRx_OC1M_PWM << 12;
+        timer->CCER &= ~0x10; 
+        timer->CCER |= 0x10;  
+        timer->CCR2 = (cfg->period + 1) * cfg->duty_cycle / 100;
+        break;
+
+    case TIM_CHANNEL3:
+        timer->CCMR2 &= ~(0x7 << 4); 
+        timer->CCMR2 |= TIMER_CCMRx_OC1M_PWM << 4;
+        timer->CCER &= ~0x100; 
+        timer->CCER |= 0x100;  
+        timer->CCR3 = (cfg->period + 1) * cfg->duty_cycle / 100;
+        break;
+
+    case TIM_CHANNEL4:
+        timer->CCMR2 &= ~(0x7 << 12); 
+        timer->CCMR2 |= TIMER_CCMRx_OC1M_PWM << 12;
+        timer->CCER &= ~0x1000; 
+        timer->CCER |= 0x1000;  
+        timer->CCR4 = (cfg->period + 1) * cfg->duty_cycle / 100;
+        break;
+
+    default:
+        break;
+    }
+
     timer->CCMR1 |= TIMER_CCMRx_OC1M_PWM << 4;
     timer->CCER |= TIMER_CCER_CCx(cfg->channel, 0);
-    timer->CR1 |= TIMER_CR1_ARPE | TIMER_CR1_CEN;   
+
+    timer->CR1 |= TIMER_CR1_ARPE | TIMER_CR1_CEN;
     set_pwm_timer(timer, cfg->duty_cycle);
 }

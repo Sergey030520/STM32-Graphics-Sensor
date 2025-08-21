@@ -9,7 +9,11 @@ uint16_t master_buff[128];
 int master_idx = 0;
 int isSendDataDMA = 0;
 
-
+uint32_t calculate_SPI_BRR(uint32_t spi_clk, uint32_t baud_rate);
+int spi_send_polling(SPI_Config_t *cfg);
+int spi_send_dma(SPI_Config_t *cfg);
+int spi_recv_polling(SPI_Config_t *cfg);
+int spi_recv_dma(SPI_Config_t *cfg);
 
 uint32_t calculate_SPI_BRR(uint32_t spi_clk, uint32_t baud_rate)
 {
@@ -66,16 +70,24 @@ int setup_spi(SPI_Config_t *spi_cfg, uint32_t spi_clk)
         spi->CR1 |= SPI_CR1_CPHA;
 
     if (spi_cfg->data_size == SPI_DATASIZE_16BIT)
+    {
         spi->CR1 |= SPI_CR1_DFF;
+    }
 
     if (spi_cfg->miso_dma)
     {
-        spi->CR2 |= SPI_CR2_RXDMAEN;
+
+        if (spi_cfg->data_size == SPI_DATASIZE_16BIT)
+            spi_cfg->miso_dma->mem_size = DMA_DATASIZE_16BIT;
+        spi_cfg->miso_dma->peripheral_addr = (uint32_t)&spi->DR;
         dma_init(spi_cfg->miso_dma);
     }
     if (spi_cfg->mosi_dma)
     {
-        spi->CR2 |= SPI_CR2_TXDMAEN;
+        if (spi_cfg->data_size == SPI_DATASIZE_16BIT)
+            spi_cfg->mosi_dma->mem_size = DMA_DATASIZE_16BIT;
+
+        spi_cfg->mosi_dma->peripheral_addr = (uint32_t)&spi->DR;
         dma_init(spi_cfg->mosi_dma);
     }
     if (spi_cfg->spi_mode == SPI_MASTER)
@@ -97,158 +109,166 @@ int setup_spi(SPI_Config_t *spi_cfg, uint32_t spi_clk)
     return 0;
 }
 
-int send_data_spi_master(SPI_Config_t *spi_cfg, uint16_t *data, uint32_t size)
+int send_data_spi_master(SPI_Config_t *cfg)
 {
-    if (spi_cfg == NULL)
+    if (!cfg || !cfg->tx_buff || !cfg->tx_buff->buffer || cfg->tx_buff->size == 0)
         return -1;
 
-    SPI_Type *spi = spi_cfg->spi;
-    uint16_t dummy = 0;
-    for (uint32_t i = 0; i < size; i++)
+    if (cfg->mosi_mode == SPI_MODE_POLLING)
+        return spi_send_polling(cfg);
+    else if (cfg->mosi_mode == SPI_MODE_DMA)
+        return spi_send_dma(cfg);
+
+    return -2;
+}
+
+int spi_send_polling(SPI_Config_t *cfg)
+{
+    if (!cfg || !cfg->tx_buff || !cfg->tx_buff->buffer || cfg->tx_buff->size == 0)
+        return -1;
+
+    SPI_Type *spi = cfg->spi;
+    uint16_t dummy;
+    SPI_Buffer_t *buff = cfg->tx_buff;
+
+    for (uint32_t i = 0; i < buff->size; i++)
     {
         while (!(spi->SR & SPI_SR_TXE))
             ;
 
-        if (spi_cfg->data_size == SPI_DATASIZE_8BIT)
-        {
-            spi->DR = (uint8_t)(data[i] & 0xFF);
-        }
+        if (cfg->data_size == SPI_DATASIZE_8BIT)
+            spi->DR = (uint8_t)(buff->buffer[i] & 0xFF);
         else
-        {
-            spi->DR = data[i];
-        }
+            spi->DR = buff->buffer[i];
 
         while (!(spi->SR & SPI_SR_RXNE))
             ;
-        dummy = spi->DR; // читаем для очистки флага RXNE
+        dummy = spi->DR;
         (void)dummy;
     }
 
     while (spi->SR & SPI_SR_BSY)
         ;
+
+    buff->complete = 1;
+
+    return 0;
 }
 
-int recv_data_spi_master(SPI_Config_t *spi_cfg, uint16_t *buffer, uint32_t size)
+int spi_send_dma(SPI_Config_t *cfg)
 {
-    if (spi_cfg == NULL)
+    if (!cfg || !cfg->mosi_dma || !cfg->tx_buff ||
+        !cfg->tx_buff->buffer || cfg->tx_buff->size == 0)
         return -1;
 
-    SPI_Type *spi = spi_cfg->spi;
-    for (uint32_t i = 0; i < size; i++)
+    cfg->tx_buff->pos = 0;
+    cfg->tx_buff->complete = 0;
+
+    uint32_t tmp = cfg->spi->SR;
+    tmp = cfg->spi->DR;
+    (void)tmp;
+
+    cfg->spi->CR2 |= SPI_CR2_TXDMAEN;
+
+    dma_set_memory(cfg->mosi_dma,
+                   (uint32_t)cfg->tx_buff->buffer,
+                   cfg->tx_buff->size);
+
+    dma_start(cfg->mosi_dma);
+
+
+    while (!dma_transfer_complete(cfg->mosi_dma))
+        ;
+
+    uint32_t timeout = 100000;
+    while (!(cfg->spi->SR & SPI_SR_TXE) && timeout--)
+        ;
+
+    timeout = 100000;
+    while ((cfg->spi->SR & SPI_SR_BSY) && timeout--)
+        ;
+
+    // 6) dummy-чтение для гашения флагов
+    uint32_t dr = cfg->spi->DR;
+    uint32_t sr = cfg->spi->SR;
+    (void)sr;
+    (void)dr;
+
+    // 7) выключить запросы
+    cfg->spi->CR2 &= ~SPI_CR2_TXDMAEN;
+
+    cfg->tx_buff->complete = 1;
+    return 0;
+}
+
+int recv_data_spi_master(SPI_Config_t *cfg)
+{
+    if (!cfg || !cfg->rx_buff || !cfg->rx_buff->buffer || cfg->rx_buff->size == 0)
+        return -1;
+
+    if (cfg->miso_mode == SPI_MODE_POLLING)
+        return spi_recv_polling(cfg);
+    else if (cfg->miso_mode == SPI_MODE_DMA)
+        return spi_recv_dma(cfg);
+
+    return -2;
+}
+
+int spi_recv_polling(SPI_Config_t *cfg)
+{
+    if (!cfg || !cfg->rx_buff || !cfg->rx_buff->buffer || cfg->rx_buff->size == 0)
+        return -1;
+
+    SPI_Type *spi = cfg->spi;
+    SPI_Buffer_t *buff = cfg->rx_buff;
+
+    for (uint32_t i = 0; i < buff->size; i++)
     {
         while (!(spi->SR & SPI_SR_TXE))
             ;
-        if (spi_cfg->data_size == SPI_DATASIZE_8BIT)
+
+        if (cfg->data_size == SPI_DATASIZE_8BIT)
             spi->DR = 0xFF;
         else
             spi->DR = 0xFFFF;
 
         while (!(spi->SR & SPI_SR_RXNE))
             ;
-        if (spi_cfg->data_size == SPI_DATASIZE_8BIT)
-            buffer[i] = spi->DR & 0xFF;
+
+        if (cfg->data_size == SPI_DATASIZE_8BIT)
+            buff->buffer[i] = spi->DR & 0xFF;
         else
-            buffer[i] = spi->DR;
+            buff->buffer[i] = spi->DR;
     }
 
     while (spi->SR & SPI_SR_BSY)
         ;
+
+    buff->complete = 1;
+
+    return 0;
 }
 
-int spi_master_send_dma(SPI_Config_t *cfg)
-{
-    if (!cfg || !cfg->mosi_dma || !cfg->tx_buff || !cfg->tx_buff->buffer || cfg->tx_buff->size == 0)
-        return -1;
-
-    SPI_Buffer_t *tx = cfg->tx_buff;
-    tx->pos = 0;
-    tx->complete = 0;
-
-    cfg->spi->CR2 |= SPI_CR2_TXDMAEN;
-
-    dma_set_memory(cfg->mosi_dma, (uint32_t)tx->buffer, tx->size);
-    dma_start(cfg->mosi_dma);
-
-    while (!dma_transfer_complete(cfg->mosi_dma));
-
-    cfg->spi->CR2 &= ~SPI_CR2_TXDMAEN;
-
-    tx->complete = 1;
-}
-
-int spi_master_recv_dma(SPI_Config_t *cfg)
+int spi_recv_dma(SPI_Config_t *cfg)
 {
     if (!cfg || !cfg->miso_dma || !cfg->rx_buff || !cfg->rx_buff->buffer || cfg->rx_buff->size == 0)
         return -1;
 
-    SPI_Buffer_t *rx = cfg->rx_buff;
-    rx->pos = 0;
-    rx->complete = 0;
+    cfg->rx_buff->pos = 0;
+    cfg->rx_buff->complete = 0;
 
+    // Включаем RX DMA в SPI
     cfg->spi->CR2 |= SPI_CR2_RXDMAEN;
 
-    dma_set_memory(cfg->miso_dma, (uint32_t)rx->buffer, rx->size);
+    dma_set_memory(cfg->miso_dma, (uint32_t)cfg->rx_buff->buffer, cfg->rx_buff->size);
     dma_start(cfg->miso_dma);
 
-    while (!dma_transfer_complete(cfg->miso_dma));
+    // Ждем окончания приёма
+    while (!dma_transfer_complete(cfg->miso_dma))
+        ;
 
     cfg->spi->CR2 &= ~SPI_CR2_RXDMAEN;
+    cfg->rx_buff->complete = 1;
 
-    rx->complete = 1;
     return 0;
 }
-
-
-// void send_data_spi_dma(uint8_t *message, uint16_t length)
-// {
-//     int channel = CHANNEL_3 - 1;
-//     isSendDataDMA = 0;
-//     dma1->channels[channel].CCR = 0;
-//     dma1->channels[channel].CNDTR = length;
-//     dma1->channels[channel].CPAR = (uint32_t)(&spi_master->DR);
-//     dma1->channels[channel].CMAR = (uint32_t)message;
-//     dma1->channels[channel].CCR |= DMA_MSIZE_8BITS | DMA_PSIZE_8BITS | DMA_MINC | DMA_DIR_MEMORY | DMA_TCIE;
-//     dma1->channels[channel].CCR |= DMA_EN;
-
-//     // while (!isSendDataDMA)
-//     //     ;
-//     while (!(dma1->ISR & TCIFx(CHANNEL_3)))
-//         ;
-
-//     dma1->IFCR &= DMA_IFCR_CTCIFx(CHANNEL_3);
-//     dma1->channels[channel].CCR &= ~DMA_EN;
-// }
-
-// void recive_data_spi1_dma(uint8_t *buff, uint16_t length)
-// {
-//     DMA_Channel channel = CHANNEL_2;
-//     dma1->channels[channel].CCR = 0;
-//     dma1->channels[channel].CNDTR = length;
-//     dma1->channels[channel].CPAR = (uint32_t)&spi_master->DR;
-//     dma1->channels[channel].CMAR = (uint32_t)buff;
-//     dma1->channels[channel].CCR |= DMA_MSIZE_8BITS | DMA_PSIZE_8BITS | DMA_MINC | DMA_DIR_PERIPHERAL | DMA_TEIE | DMA_TCIE | DMA_HTIE;
-//     dma1->channels[channel].CCR |= DMA_EN;
-// }
-
-// void DMA1_Channel3_IRQHandler(void)
-// {
-// ledOn(1);
-// DMA_Channel channel = CHANNEL_3;
-// if (dma->ISR & TEIFx(channel)) // Check tranfer error
-// {
-//     dma->IFCR |= DMA_IFCR_CTEIFx(channel);
-// }
-// if (dma->ISR & HTIFx(channel)) // Check half transfer
-// {
-//     dma->IFCR |= CHTIFx(channel);
-// }
-// if (dma->ISR & TCIFx(channel)) // Check transfer complete
-// {
-//     isSendDataDMA = 1;
-//     dma->IFCR  |= DMA_IFCR_CTCIFx(channel);
-// }
-// if (dma->ISR & GIFx(channel)) // Check global interrupt
-// {
-//     dma->IFCR |= DMA_IFCR_CGIFx(channel);
-// }
-// }

@@ -14,7 +14,15 @@ void init_irq()
 {
     // NVIC->ISERx[0] = NVIC_DMA1_CHANNEL3; // NVIC_DMA1_CHANNEL3; // DMA1|_Channel_5
     // NVIC->ISERx[1] = NVIC_SPI1;          // | NVIC_SPI1;                   //| NVIC_USART1;
-    enable_irq_nvic(DMA1_Channel4_IRQ,6);
+    // enable_irq_nvic(DMA1_Channel1_IRQ, 6);
+    // enable_irq_nvic(DMA1_Channel2_IRQ, 6);
+    enable_irq_nvic(DMA1_Channel3_IRQ, 6);
+    enable_irq_nvic(DMA1_Channel4_IRQ, 6);
+    // enable_irq_nvic(DMA1_Channel5_IRQ, 6);
+    // enable_irq_nvic(DMA1_Channel6_IRQ, 6);
+    // enable_irq_nvic(DMA1_Channel7_IRQ, 6);
+    // enable_irq_nvic(SPI1_IRQ, 6);
+
     __enable_irq();
 }
 

@@ -1,11 +1,10 @@
 #include "tft.h"
 #include <stdio.h>
+#include "log.h"
 
 // Res port - 0 - reset, 1 - start (PA1)
 // DC - Data command (1 - data, 0 - command) (PA2)
 // BLK - 1 - light, 0 - without light (PB6)
-
-
 
 TFT_Interface_t *tft_if = NULL;
 
@@ -21,7 +20,7 @@ void send_data_array_command(uint8_t *data, uint32_t size)
     if (tft_if == NULL)
         return;
     tft_if->set_dc(1);
-    tft_if->spi_send(&data, size);
+    tft_if->spi_send(data, size);
 }
 
 void send_data_command(uint8_t data)
@@ -142,7 +141,6 @@ void set_porch_settings()
     send_data_array_command(porch_settings, sizeof(porch_settings));
 }
 
-
 void set_column_display(uint16_t startX, uint16_t endX)
 {
     send_command(CMD_CASET);
@@ -174,23 +172,24 @@ void set_address_window(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
 
 void fill_color_display(uint16_t color)
 {
-    uint8_t idxH, idxV;
+    if (!tft_if) return;
 
-    // Coordinate coord = {.x0 = 0, .y0 = 0, .x1 = DISPLAY_WIDTH - 1, .y1 = DISPLAY_HEIGTH - 1};
+    set_address_window(0, 0, DISPLAY_WIDTH - 1, DISPLAY_HEIGHT - 1);
+    send_command(CMD_RAMWR); 
 
-    set_address_window(0, 0, DISPLAY_WIDTH - 1, DISPLAY_HEIGTH - 1);
+    uint16_t buf[128];
+    for (int i = 0; i < 128; i++)
+        buf[i] = (color >> 8) | (color << 8); // меняем порядок байт для SPI
 
-    // uint8_t data_color[] = {(color >> 8), color & 0xFF};
-
-    for (idxH = 0; idxH < DISPLAY_WIDTH; ++idxH)
+    uint32_t pixels = DISPLAY_WIDTH * DISPLAY_HEIGHT;
+    while (pixels > 0)
     {
-        for (idxV = 0; idxV < DISPLAY_HEIGTH; ++idxV)
-        {
-            uint8_t data_color[] = {(color >> 8), color & 0xFF};
-            send_data_array_command(data_color, sizeof(data_color));
-        }
+        uint32_t toSend = pixels > 128 ? 128 : pixels;
+        send_data_array_command((uint8_t*)buf, toSend * 2);
+        pixels -= toSend;
     }
 }
+
 
 void draw_line(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t color)
 {
@@ -213,7 +212,7 @@ void draw_rect(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t
         // ledOn(1);
         return;
     }
-    if ((y + height) > DISPLAY_HEIGTH)
+    if ((y + height) > DISPLAY_HEIGHT)
     {
         // signal_error(5);
         return;
@@ -244,7 +243,7 @@ void draw_pixel(uint16_t x, uint16_t y, uint16_t color)
         ledOn(1);
         return;
     }
-    if (y < 0 || y > DISPLAY_HEIGTH)
+    if (y < 0 || y > DISPLAY_HEIGHT)
     {
         ledOn(1);
         return;
@@ -351,12 +350,12 @@ void draw_circle(uint16_t x0, uint16_t y0, uint16_t radius, uint16_t color)
     }
 }
 
-void draw_image(uint16_t width, uint16_t heigth, uint16_t pixels[DISPLAY_HEIGTH][DISPLAY_WIDTH])
+void draw_image(uint16_t width, uint16_t heigth, uint16_t pixels[DISPLAY_HEIGHT][DISPLAY_WIDTH])
 {
 
     set_address_window(0, 0, width, heigth);
     uint16_t row, column;
-    for (row = 0; row < DISPLAY_HEIGTH; ++row)
+    for (row = 0; row < DISPLAY_HEIGHT; ++row)
     {
         for (column = 0; column < DISPLAY_WIDTH; ++column)
         {
@@ -400,33 +399,48 @@ void clear_screen()
     fill_color_display(RGB565(0, 0, 0));
 }
 
-
 void st7789_init(TFT_Interface_t *tft_interface)
 {
-    if(tft_interface == NULL){
+    if (tft_interface == NULL)
+    {
         return;
     }
     tft_if = tft_interface;
 
-
     hard_reset();
+    LOG_INFO("1. set hard_reset\r\n");
 
     soft_reset();
+    LOG_INFO("2. soft reset\r\n");
+
+    tft_if->delay_ms(150);
 
     sleep_mode_display(0);
 
+    LOG_INFO("3. sleep mode display\r\n");
+
     set_color_mode(BIT_PIXEl_16 | COLOR_MODE_65K);
+
+    LOG_INFO("4. set color\r\n");
+
     tft_if->delay_ms(10);
 
     inversion_mode(1);
 
+    LOG_INFO("5. inversion mode\r\n");
+
     send_command(CMD_NORON);
+
+    LOG_INFO("6. send cmd noron\r\n");
 
     fill_color_display(0x00);
 
+    LOG_INFO("7. fill color display\r\n");
+
     set_display_power(1);
 
-    tft_if->delay_ms(100);
+    LOG_INFO("8. set display power\r\n");
 
-    init_brightness();
+    tft_if->delay_ms(100);
+    tft_if->set_brightness(100);
 }

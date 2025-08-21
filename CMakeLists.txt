@@ -26,16 +26,20 @@ set(ARM_FLAGS
 add_executable(${EXECUTABLE} 
     startup/startup_stm32f103c8tx.s
     main.c
+    spi_board.h spi_board.c
+    tft_board.h tft_board.c
 )
 
 
 target_compile_options(drivers_core PRIVATE ${ARM_FLAGS})
 target_compile_options(logger PRIVATE ${ARM_FLAGS})
+target_compile_options(driver_tft_st7789 PRIVATE ${ARM_FLAGS})
 target_compile_options(${EXECUTABLE} PRIVATE ${ARM_FLAGS})
 
 target_link_libraries(${EXECUTABLE} PRIVATE
         drivers_core
         logger
+        driver_tft_st7789
         m
 )
 

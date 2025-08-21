@@ -24,7 +24,14 @@ void send_data_usart(uint8_t *message, uint16_t length)
 {
     if (huart.tx_mode == UART_MODE_DMA)
     {
-        dma_send(&huart.dma_tx, message, length);
+        while (!dma_transfer_complete(&huart.dma_tx))
+            ; 
+            
+        dma_set_memory(&huart.dma_tx, (uint32_t)message, length);
+
+        dma_start(&huart.dma_tx);
+
+        while (!dma_transfer_complete(&huart.dma_tx));
     }
     else
     {
