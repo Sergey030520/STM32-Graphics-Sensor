@@ -112,16 +112,6 @@ typedef enum
     SPI_SLAVE
 } SPI_OperationMode_t;
 
-#define SPI_BUF_SIZE 4096
-
-typedef struct
-{
-    uint8_t *buffer;
-    uint32_t size;
-    uint32_t pos;
-    uint8_t complete;
-} SPI_Buffer_t;
-
 typedef struct
 {
     SPI_Type *spi;
@@ -133,19 +123,17 @@ typedef struct
     DMA_Config *mosi_dma;
     SPI_Mode miso_mode;
     SPI_Mode mosi_mode;
-    SPI_BaudRateControl baud_rate;
+    uint32_t baud_rate;
     SPI_CPOL_t cpol;
     SPI_CPHA_t cpha;
     SPI_DataSize_t data_size;
     SPI_NSS_t nss;
     SPI_OperationMode_t spi_mode;
-    SPI_Buffer_t *tx_buff;
-    SPI_Buffer_t *rx_buff;
 } SPI_Config_t;
 
 
 int setup_spi(SPI_Config_t *cfg, uint32_t spi_clk);
 
-int send_data_spi_master(SPI_Config_t *cfg);
-int recv_data_spi_master(SPI_Config_t *cfg);
+int send_data_spi_master(SPI_Config_t *cfg, uint8_t *data, uint32_t size);
+int recv_data_spi_master(SPI_Config_t *cfg, uint8_t *data, uint32_t size);
 

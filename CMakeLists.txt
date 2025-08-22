@@ -26,6 +26,7 @@ set(ARM_FLAGS
 add_executable(${EXECUTABLE} 
     startup/startup_stm32f103c8tx.s
     main.c
+    usart_board.h usart_board.c
     spi_board.h spi_board.c
     tft_board.h tft_board.c
 )

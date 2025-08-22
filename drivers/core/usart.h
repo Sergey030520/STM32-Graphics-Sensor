@@ -124,6 +124,6 @@ typedef struct
 } UART_HandleTypeDef;
 
 void setup_uart(UART_Config_t *cfg, uint32_t usart_clk);
-void send_data_usart(uint8_t *message, uint16_t length);
-void send_byte_usart(uint8_t byte);
+void send_data_usart(UART_HandleTypeDef *huart, uint8_t *message, uint16_t length);
+void send_byte_usart(UART_HandleTypeDef *huart, uint8_t byte);
 

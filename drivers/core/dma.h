@@ -17,10 +17,10 @@
 #define DMA_CCR_EN (0x1 << 0)
 
 // SR
-#define DMA_SR_TEIFx(channel) (0x1 << ((channel - 1) * 4 + 3))
-#define DMA_SR_HTIFx(channel) (0x1 << ((channel - 1) * 4 + 2))
-#define DMA_SR_TCIFx(channel) (0x1 << ((channel - 1) * 4 + 1))
-#define DMA_SR_GIFx(channel) (0x1 << ((channel - 1) * 4))
+#define DMA_SR_TEIFx(channel) (0x1 << ((channel) * 4 + 3))
+#define DMA_SR_HTIFx(channel) (0x1 << ((channel) * 4 + 2))
+#define DMA_SR_TCIFx(channel) (0x1 << ((channel) * 4 + 1))
+#define DMA_SR_GIFx(channel) (0x1 << ((channel) * 4))
 
 // IFSR
 #define DMA_IFCR_CTEIFx DMA_SR_TEIFx
@@ -30,13 +30,13 @@
 
 typedef enum
 {
-    CHANNEL_1 = 1,
-    CHANNEL_2 = 2,
-    CHANNEL_3 = 3,
-    CHANNEL_4 = 4,
-    CHANNEL_5 = 5,
-    CHANNEL_6 = 6,
-    CHANNEL_7 = 7,
+    CHANNEL_1 = 0,
+    CHANNEL_2 = 1,
+    CHANNEL_3 = 2,
+    CHANNEL_4 = 3,
+    CHANNEL_5 = 4,
+    CHANNEL_6 = 5,
+    CHANNEL_7 = 6,
 } DMA_Channel;
 
 typedef struct
@@ -82,22 +82,21 @@ typedef struct
     DMA_Channel channel;
     DMA_Direction direction;
     uint32_t peripheral_addr;
+    uint32_t mem_addr;
     DMA_DataSize mem_size;
     DMA_DataSize periph_size;
     DMA_ChannelPriority priority;
     uint8_t inc_mem;
     uint8_t inc_periph;
     uint8_t circular;
+    uint32_t length;
 } DMA_Config;
 
 typedef void (*dma_callback_t)(void);
 
 void dma_init(DMA_Config *cfg);
-void dma_set_memory(DMA_Config *cfg, uint32_t mem_addr, uint32_t length);
 void dma_start(DMA_Config *cfg);
-uint8_t dma_transfer_complete(DMA_Config *cfg);
-void reset_flags_dma(DMA_Type *dma, DMA_Channel channel);
-
+uint8_t dma_transfer_complete(DMA_Type *dma, DMA_Channel channel);
 
 void DMA1_Channel1_IRQHandler();
 void DMA1_Channel2_IRQHandler();
@@ -106,3 +105,10 @@ void DMA1_Channel4_IRQHandler();
 void DMA1_Channel5_IRQHandler();
 void DMA1_Channel6_IRQHandler();
 void DMA1_Channel7_IRQHandler();
+
+
+void dma_set_memory(DMA_Config *cfg, uint32_t mem_addr, uint32_t length);
+
+// uint8_t dma_transfer_complete(DMA_Config *cfg);
+void reset_flags_dma(DMA_Type *dma, DMA_Channel channel);
+void dma_config_transfer(DMA_Config *cfg, uint32_t periph_addr, uint32_t mem_addr, uint32_t length);

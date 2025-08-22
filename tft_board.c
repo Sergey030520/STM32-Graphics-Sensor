@@ -5,7 +5,7 @@
 #include "spi_board.h"
 #include <stdlib.h>
 #include "rcc.h"
-
+#include "log.h"
 
 
 #define TFT_RES_Port GPIOA_REG
@@ -98,6 +98,12 @@ void tft_init_board_interface(TFT_Interface_t *tft)
     tft->spi_recv = tft_spi_recv;
     tft->delay_ms = tft_delay_ms;
     tft->set_brightness = tft_set_brightness;
+
+    uint8_t buff_[] = {0x55, 0xAA};
+    while(1){
+        tft_spi_send(buff_, 2);
+        delay_timer(500);
+    };
 
     st7789_init(tft);
 }

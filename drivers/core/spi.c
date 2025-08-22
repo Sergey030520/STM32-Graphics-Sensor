@@ -4,21 +4,16 @@
 #include <stdio.h>
 #include "rcc.h"
 
-uint16_t master_buff[128];
-
-int master_idx = 0;
-int isSendDataDMA = 0;
 
 uint32_t calculate_SPI_BRR(uint32_t spi_clk, uint32_t baud_rate);
-int spi_send_polling(SPI_Config_t *cfg);
-int spi_send_dma(SPI_Config_t *cfg);
-int spi_recv_polling(SPI_Config_t *cfg);
-int spi_recv_dma(SPI_Config_t *cfg);
+int spi_send_polling(SPI_Config_t *cfg, uint8_t *data, uint32_t size);
+int spi_send_dma(SPI_Config_t *cfg, uint8_t *data, uint32_t size);
+int spi_recv_polling(SPI_Config_t *cfg, uint8_t *data, uint32_t size);
+int spi_recv_dma(SPI_Config_t *cfg, uint8_t *data, uint32_t size);
 
 uint32_t calculate_SPI_BRR(uint32_t spi_clk, uint32_t baud_rate)
 {
     uint32_t div = spi_clk / baud_rate;
-
     if (div <= 2)
         return SPI_BAUDRATE_DIV2;
     if (div <= 4)
@@ -74,22 +69,6 @@ int setup_spi(SPI_Config_t *spi_cfg, uint32_t spi_clk)
         spi->CR1 |= SPI_CR1_DFF;
     }
 
-    if (spi_cfg->miso_dma)
-    {
-
-        if (spi_cfg->data_size == SPI_DATASIZE_16BIT)
-            spi_cfg->miso_dma->mem_size = DMA_DATASIZE_16BIT;
-        spi_cfg->miso_dma->peripheral_addr = (uint32_t)&spi->DR;
-        dma_init(spi_cfg->miso_dma);
-    }
-    if (spi_cfg->mosi_dma)
-    {
-        if (spi_cfg->data_size == SPI_DATASIZE_16BIT)
-            spi_cfg->mosi_dma->mem_size = DMA_DATASIZE_16BIT;
-
-        spi_cfg->mosi_dma->peripheral_addr = (uint32_t)&spi->DR;
-        dma_init(spi_cfg->mosi_dma);
-    }
     if (spi_cfg->spi_mode == SPI_MASTER)
     {
         spi->CR1 |= SPI_CR1_MSTR | SPI_CR1_SSM | SPI_CR1_SSI;
@@ -103,172 +82,163 @@ int setup_spi(SPI_Config_t *spi_cfg, uint32_t spi_clk)
             spi->CR1 |= SPI_CR1_SSM;
     }
 
+    if (spi_cfg->miso_dma)
+    {
+
+        if (spi_cfg->data_size == SPI_DATASIZE_16BIT)
+            spi_cfg->miso_dma->mem_size = DMA_DATASIZE_16BIT;
+        spi_cfg->miso_dma->peripheral_addr = (uint32_t)&spi->DR;
+        spi->CR2 |= SPI_CR2_RXDMAEN;
+    }
+    if (spi_cfg->mosi_dma)
+    {
+        if (spi_cfg->data_size == SPI_DATASIZE_16BIT)
+            spi_cfg->mosi_dma->mem_size = DMA_DATASIZE_16BIT;
+
+        spi_cfg->mosi_dma->peripheral_addr = (uint32_t)&spi->DR;
+        spi->CR2 |= SPI_CR2_TXDMAEN;
+    }
+
     // Включаем SPI
     spi->CR1 |= SPI_CR1_SPE;
+
+    if (!(spi->SR & SPI_SR_TXE))
+        spi->DR = 0;
 
     return 0;
 }
 
-int send_data_spi_master(SPI_Config_t *cfg)
+int send_data_spi_master(SPI_Config_t *cfg, uint8_t *data, uint32_t size)
 {
-    if (!cfg || !cfg->tx_buff || !cfg->tx_buff->buffer || cfg->tx_buff->size == 0)
+    if (!cfg || !data || size == 0)
         return -1;
 
     if (cfg->mosi_mode == SPI_MODE_POLLING)
-        return spi_send_polling(cfg);
+        return spi_send_polling(cfg, data, size);
     else if (cfg->mosi_mode == SPI_MODE_DMA)
-        return spi_send_dma(cfg);
+        return spi_send_dma(cfg, data, size);
 
     return -2;
 }
 
-int spi_send_polling(SPI_Config_t *cfg)
+int spi_send_polling(SPI_Config_t *cfg, uint8_t *data, uint32_t size)
 {
-    if (!cfg || !cfg->tx_buff || !cfg->tx_buff->buffer || cfg->tx_buff->size == 0)
+    if (!cfg || !data || size == 0)
         return -1;
 
     SPI_Type *spi = cfg->spi;
     uint16_t dummy;
-    SPI_Buffer_t *buff = cfg->tx_buff;
 
-    for (uint32_t i = 0; i < buff->size; i++)
+    for (uint32_t i = 0; i < size; i++)
     {
         while (!(spi->SR & SPI_SR_TXE))
             ;
 
         if (cfg->data_size == SPI_DATASIZE_8BIT)
-            spi->DR = (uint8_t)(buff->buffer[i] & 0xFF);
+            spi->DR = data[i];
         else
-            spi->DR = buff->buffer[i];
+            spi->DR = ((uint16_t *)data)[i];
 
         while (!(spi->SR & SPI_SR_RXNE))
             ;
-        dummy = spi->DR;
+        dummy = spi->DR; // гасим RXNE
         (void)dummy;
     }
 
     while (spi->SR & SPI_SR_BSY)
         ;
 
-    buff->complete = 1;
-
     return 0;
 }
 
-int spi_send_dma(SPI_Config_t *cfg)
+int spi_send_dma(SPI_Config_t *cfg, uint8_t *data, uint32_t size)
 {
-    if (!cfg || !cfg->mosi_dma || !cfg->tx_buff ||
-        !cfg->tx_buff->buffer || cfg->tx_buff->size == 0)
+    if (!cfg || !cfg->mosi_dma || !data || size == 0)
         return -1;
 
-    cfg->tx_buff->pos = 0;
-    cfg->tx_buff->complete = 0;
 
-    uint32_t tmp = cfg->spi->SR;
-    tmp = cfg->spi->DR;
+    SPI_Type *spi = cfg->spi;
+
+    while (!dma_transfer_complete(cfg->mosi_dma->dma, cfg->mosi_dma->channel))
+        ;
+
+
+    // Очистка флагов SPI
+    volatile uint32_t tmp = spi->SR;
+    tmp = spi->DR;
     (void)tmp;
 
-    cfg->spi->CR2 |= SPI_CR2_TXDMAEN;
+    // Настройка DMA
+    cfg->mosi_dma->mem_addr = (uint32_t)data;
+    cfg->mosi_dma->length = size;
 
-    dma_set_memory(cfg->mosi_dma,
-                   (uint32_t)cfg->tx_buff->buffer,
-                   cfg->tx_buff->size);
-
+    dma_init(cfg->mosi_dma);
     dma_start(cfg->mosi_dma);
 
-
-    while (!dma_transfer_complete(cfg->mosi_dma))
-        ;
-
-    uint32_t timeout = 100000;
-    while (!(cfg->spi->SR & SPI_SR_TXE) && timeout--)
-        ;
-
-    timeout = 100000;
-    while ((cfg->spi->SR & SPI_SR_BSY) && timeout--)
-        ;
-
-    // 6) dummy-чтение для гашения флагов
-    uint32_t dr = cfg->spi->DR;
-    uint32_t sr = cfg->spi->SR;
-    (void)sr;
-    (void)dr;
-
-    // 7) выключить запросы
-    cfg->spi->CR2 &= ~SPI_CR2_TXDMAEN;
-
-    cfg->tx_buff->complete = 1;
     return 0;
 }
 
-int recv_data_spi_master(SPI_Config_t *cfg)
+int recv_data_spi_master(SPI_Config_t *cfg, uint8_t *data, uint32_t size)
 {
-    if (!cfg || !cfg->rx_buff || !cfg->rx_buff->buffer || cfg->rx_buff->size == 0)
+    if (!cfg || !data || size == 0)
         return -1;
 
     if (cfg->miso_mode == SPI_MODE_POLLING)
-        return spi_recv_polling(cfg);
+        return spi_recv_polling(cfg, data, size);
     else if (cfg->miso_mode == SPI_MODE_DMA)
-        return spi_recv_dma(cfg);
+        return spi_recv_dma(cfg, data, size);
 
     return -2;
 }
 
-int spi_recv_polling(SPI_Config_t *cfg)
+int spi_recv_polling(SPI_Config_t *cfg, uint8_t *data, uint32_t size)
 {
-    if (!cfg || !cfg->rx_buff || !cfg->rx_buff->buffer || cfg->rx_buff->size == 0)
+    if (!cfg || !data || size == 0)
         return -1;
 
     SPI_Type *spi = cfg->spi;
-    SPI_Buffer_t *buff = cfg->rx_buff;
 
-    for (uint32_t i = 0; i < buff->size; i++)
+    for (uint32_t i = 0; i < size; i++)
     {
+        // ждем, пока TXE станет доступен
         while (!(spi->SR & SPI_SR_TXE))
             ;
 
+        // отправляем заглушку, чтобы запустить тактирование и получить байт
         if (cfg->data_size == SPI_DATASIZE_8BIT)
             spi->DR = 0xFF;
         else
             spi->DR = 0xFFFF;
 
+        // ждем прихода данных
         while (!(spi->SR & SPI_SR_RXNE))
             ;
 
+        // читаем данные
         if (cfg->data_size == SPI_DATASIZE_8BIT)
-            buff->buffer[i] = spi->DR & 0xFF;
+            data[i] = (uint8_t)(spi->DR & 0xFF);
         else
-            buff->buffer[i] = spi->DR;
+            ((uint16_t *)data)[i] = (uint16_t)(spi->DR);
     }
 
+    // ждем, пока SPI не освободится
     while (spi->SR & SPI_SR_BSY)
         ;
-
-    buff->complete = 1;
 
     return 0;
 }
 
-int spi_recv_dma(SPI_Config_t *cfg)
+int spi_recv_dma(SPI_Config_t *cfg, uint8_t *data, uint32_t size)
 {
-    if (!cfg || !cfg->miso_dma || !cfg->rx_buff || !cfg->rx_buff->buffer || cfg->rx_buff->size == 0)
+    if (!cfg || !cfg->miso_dma || !data || size == 0)
         return -1;
 
-    cfg->rx_buff->pos = 0;
-    cfg->rx_buff->complete = 0;
-
-    // Включаем RX DMA в SPI
-    cfg->spi->CR2 |= SPI_CR2_RXDMAEN;
-
-    dma_set_memory(cfg->miso_dma, (uint32_t)cfg->rx_buff->buffer, cfg->rx_buff->size);
+    dma_init(cfg->miso_dma);
     dma_start(cfg->miso_dma);
 
-    // Ждем окончания приёма
-    while (!dma_transfer_complete(cfg->miso_dma))
+    // Ждем окончания передачи
+    while (!dma_transfer_complete(cfg->miso_dma->dma, cfg->miso_dma->channel))
         ;
-
-    cfg->spi->CR2 &= ~SPI_CR2_RXDMAEN;
-    cfg->rx_buff->complete = 1;
 
     return 0;
 }
