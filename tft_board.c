@@ -99,11 +99,5 @@ void tft_init_board_interface(TFT_Interface_t *tft)
     tft->delay_ms = tft_delay_ms;
     tft->set_brightness = tft_set_brightness;
 
-    uint8_t buff_[] = {0x55, 0xAA};
-    while(1){
-        tft_spi_send(buff_, 2);
-        delay_timer(500);
-    };
-
     st7789_init(tft);
 }

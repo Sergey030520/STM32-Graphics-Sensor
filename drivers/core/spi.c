@@ -4,12 +4,14 @@
 #include <stdio.h>
 #include "rcc.h"
 
+#include "led.h"
+
 
 uint32_t calculate_SPI_BRR(uint32_t spi_clk, uint32_t baud_rate);
-int spi_send_polling(SPI_Config_t *cfg, uint8_t *data, uint32_t size);
-int spi_send_dma(SPI_Config_t *cfg, uint8_t *data, uint32_t size);
-int spi_recv_polling(SPI_Config_t *cfg, uint8_t *data, uint32_t size);
-int spi_recv_dma(SPI_Config_t *cfg, uint8_t *data, uint32_t size);
+int spi_send_polling(SPI_HandleTypeDef *cfg, uint8_t *data, uint32_t size);
+int spi_send_dma(SPI_HandleTypeDef *cfg, uint8_t *data, uint32_t size);
+int spi_recv_polling(SPI_HandleTypeDef *cfg, uint8_t *data, uint32_t size);
+int spi_recv_dma(SPI_HandleTypeDef *cfg, uint8_t *data, uint32_t size);
 
 uint32_t calculate_SPI_BRR(uint32_t spi_clk, uint32_t baud_rate)
 {
@@ -108,7 +110,7 @@ int setup_spi(SPI_Config_t *spi_cfg, uint32_t spi_clk)
     return 0;
 }
 
-int send_data_spi_master(SPI_Config_t *cfg, uint8_t *data, uint32_t size)
+int send_data_spi_master(SPI_HandleTypeDef *cfg, uint8_t *data, uint32_t size)
 {
     if (!cfg || !data || size == 0)
         return -1;
@@ -121,7 +123,8 @@ int send_data_spi_master(SPI_Config_t *cfg, uint8_t *data, uint32_t size)
     return -2;
 }
 
-int spi_send_polling(SPI_Config_t *cfg, uint8_t *data, uint32_t size)
+
+int spi_send_polling(SPI_HandleTypeDef *cfg, uint8_t *data, uint32_t size)
 {
     if (!cfg || !data || size == 0)
         return -1;
@@ -151,34 +154,30 @@ int spi_send_polling(SPI_Config_t *cfg, uint8_t *data, uint32_t size)
     return 0;
 }
 
-int spi_send_dma(SPI_Config_t *cfg, uint8_t *data, uint32_t size)
+int spi_send_dma(SPI_HandleTypeDef *cfg, uint8_t *data, uint32_t size)
 {
-    if (!cfg || !cfg->mosi_dma || !data || size == 0)
+    if (!cfg || !data || size == 0)
         return -1;
 
-
     SPI_Type *spi = cfg->spi;
-
-    while (!dma_transfer_complete(cfg->mosi_dma->dma, cfg->mosi_dma->channel))
+    
+    while (!dma_transfer_complete(cfg->mosi_dma.dma, cfg->mosi_dma.channel))
         ;
 
-
-    // Очистка флагов SPI
-    volatile uint32_t tmp = spi->SR;
+    uint32_t tmp = spi->SR;
     tmp = spi->DR;
     (void)tmp;
 
-    // Настройка DMA
-    cfg->mosi_dma->mem_addr = (uint32_t)data;
-    cfg->mosi_dma->length = size;
+    cfg->mosi_dma.mem_addr = (uint32_t)data;
+    cfg->mosi_dma.length = size;
 
-    dma_init(cfg->mosi_dma);
-    dma_start(cfg->mosi_dma);
-
+    dma_init(&cfg->mosi_dma);
+    dma_start(&cfg->mosi_dma);
     return 0;
 }
 
-int recv_data_spi_master(SPI_Config_t *cfg, uint8_t *data, uint32_t size)
+
+int recv_data_spi_master(SPI_HandleTypeDef *cfg, uint8_t *data, uint32_t size)
 {
     if (!cfg || !data || size == 0)
         return -1;
@@ -191,7 +190,7 @@ int recv_data_spi_master(SPI_Config_t *cfg, uint8_t *data, uint32_t size)
     return -2;
 }
 
-int spi_recv_polling(SPI_Config_t *cfg, uint8_t *data, uint32_t size)
+int spi_recv_polling(SPI_HandleTypeDef *cfg, uint8_t *data, uint32_t size)
 {
     if (!cfg || !data || size == 0)
         return -1;
@@ -200,45 +199,43 @@ int spi_recv_polling(SPI_Config_t *cfg, uint8_t *data, uint32_t size)
 
     for (uint32_t i = 0; i < size; i++)
     {
-        // ждем, пока TXE станет доступен
         while (!(spi->SR & SPI_SR_TXE))
             ;
 
-        // отправляем заглушку, чтобы запустить тактирование и получить байт
         if (cfg->data_size == SPI_DATASIZE_8BIT)
             spi->DR = 0xFF;
         else
             spi->DR = 0xFFFF;
 
-        // ждем прихода данных
         while (!(spi->SR & SPI_SR_RXNE))
             ;
 
-        // читаем данные
         if (cfg->data_size == SPI_DATASIZE_8BIT)
             data[i] = (uint8_t)(spi->DR & 0xFF);
         else
             ((uint16_t *)data)[i] = (uint16_t)(spi->DR);
     }
 
-    // ждем, пока SPI не освободится
     while (spi->SR & SPI_SR_BSY)
         ;
 
     return 0;
 }
 
-int spi_recv_dma(SPI_Config_t *cfg, uint8_t *data, uint32_t size)
+int spi_recv_dma(SPI_HandleTypeDef *cfg, uint8_t *data, uint32_t size)
 {
-    if (!cfg || !cfg->miso_dma || !data || size == 0)
+    if (!cfg || !data || size == 0)
         return -1;
 
-    dma_init(cfg->miso_dma);
-    dma_start(cfg->miso_dma);
+    cfg->miso_dma.mem_addr = (uint32_t)data;
+    cfg->miso_dma.length = size;
 
-    // Ждем окончания передачи
-    while (!dma_transfer_complete(cfg->miso_dma->dma, cfg->miso_dma->channel))
+    dma_init(&cfg->miso_dma);
+    dma_start(&cfg->miso_dma);
+
+    while (!dma_transfer_complete(cfg->miso_dma.dma, cfg->miso_dma.channel))
         ;
 
     return 0;
 }
+

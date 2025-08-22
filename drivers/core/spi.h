@@ -131,9 +131,22 @@ typedef struct
     SPI_OperationMode_t spi_mode;
 } SPI_Config_t;
 
+typedef struct
+{
+    SPI_Type *spi;
+    DMA_Config miso_dma;
+    DMA_Config mosi_dma;
+    SPI_Mode miso_mode;
+    SPI_Mode mosi_mode;
+    uint32_t baud_rate;
+    SPI_CPOL_t cpol;
+    SPI_CPHA_t cpha;
+    SPI_DataSize_t data_size;
+    SPI_NSS_t nss;
+    SPI_OperationMode_t spi_mode;
+} SPI_HandleTypeDef;
 
 int setup_spi(SPI_Config_t *cfg, uint32_t spi_clk);
 
-int send_data_spi_master(SPI_Config_t *cfg, uint8_t *data, uint32_t size);
-int recv_data_spi_master(SPI_Config_t *cfg, uint8_t *data, uint32_t size);
-
+int send_data_spi_master(SPI_HandleTypeDef *cfg, uint8_t *data, uint32_t size);
+int recv_data_spi_master(SPI_HandleTypeDef *cfg, uint8_t *data, uint32_t size);

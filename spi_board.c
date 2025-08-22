@@ -9,8 +9,7 @@
 #define SPI_TX_BUFFER_SIZE 512
 #define SPI_RX_BUFFER_SIZE 512
 
-SPI_Config_t spi_cfg = {0};
-DMA_Config dma_mosi_cfg = {0};
+SPI_HandleTypeDef spi1_handle = {0};
 // DMA_Config dma_miso_cfg = {0};
 
 int init_spi()
@@ -53,57 +52,56 @@ int init_spi()
         .af_remap = 0,
     };
 
-    // Настройка DMA
+    // Настройка DMA (mosi)
+    spi1_handle.mosi_dma.dma = (DMA_Type *)DMA1_REG;
+    spi1_handle.mosi_dma.channel = CHANNEL_3;
+    spi1_handle.mosi_dma.direction = DMA_DIR_MEM_TO_PERIPH;
+    spi1_handle.mosi_dma.mem_size = DMA_DATASIZE_8BIT;
+    spi1_handle.mosi_dma.periph_size = DMA_DATASIZE_8BIT;
+    spi1_handle.mosi_dma.inc_mem = 1;
+    spi1_handle.mosi_dma.inc_periph = 0;
+    spi1_handle.mosi_dma.circular = 0;
 
-    dma_mosi_cfg.dma = (DMA_Type*)DMA1_REG;
-    dma_mosi_cfg.channel = CHANNEL_3;
-    dma_mosi_cfg.direction = DMA_DIR_MEM_TO_PERIPH;
-    dma_mosi_cfg.mem_size = DMA_DATASIZE_8BIT;
-    dma_mosi_cfg.periph_size = DMA_DATASIZE_8BIT;
-    dma_mosi_cfg.inc_mem = 1;
-    dma_mosi_cfg.inc_periph = 0;
-    dma_mosi_cfg.circular = 0;
+    // Настройка SPI_HandleTypeDef
+    spi1_handle.spi = (SPI_Type *)SPI1_REG;
+    spi1_handle.baud_rate = 9000000;
+    spi1_handle.data_size = SPI_DATASIZE_8BIT;
+    spi1_handle.cpha = SPI_CPHA_1EDGE;
+    spi1_handle.cpol = SPI_CPOL_LOW;
+    spi1_handle.nss = SPI_NSS_SOFT;
+    spi1_handle.spi_mode = SPI_MASTER;
+    spi1_handle.mosi_mode = SPI_MODE_POLLING;
+    spi1_handle.miso_mode = SPI_MODE_DISABLE;
 
-    // dma_miso_cfg.dma = (DMA_Type*)DMA1_REG;
-    // dma_miso_cfg.channel = CHANNEL_2;
-    // dma_miso_cfg.direction = DMA_DIR_MEM_TO_PERIPH;
-    // dma_miso_cfg.mem_size = DMA_DATASIZE_8BIT;
-    // dma_miso_cfg.periph_size = DMA_DATASIZE_8BIT;
-    // dma_miso_cfg.inc_mem = 1;
-    // dma_miso_cfg.inc_periph = 0;
-    // dma_miso_cfg.circular = 0;
 
-    set_gpio_conf(&pin_sck_cfg);
-    set_gpio_conf(&pin_miso_cfg);
-    set_gpio_conf(&pin_mosi_cfg);
-    set_gpio_conf(&pin_cs_cfg);
+    SPI_Config_t cfg = {
+        .spi = spi1_handle.spi,
+        .baud_rate = spi1_handle.baud_rate,
+        .data_size = spi1_handle.data_size,
+        .cpha = spi1_handle.cpha,
+        .cpol = spi1_handle.cpol,
+        .nss = spi1_handle.nss,
+        .spi_mode = spi1_handle.spi_mode,
+        .miso_mode = spi1_handle.miso_mode,
+        .mosi_mode = spi1_handle.mosi_mode,
+        .miso_dma = NULL, 
+        .mosi_dma = &spi1_handle.mosi_dma,
+        .pin_sck = pin_sck_cfg,
+        .pin_miso = pin_miso_cfg,
+        .pin_mosi = pin_mosi_cfg,
+        .pin_cs = pin_cs_cfg,
+    };
 
-    // Конфигурация SPI
-    spi_cfg.spi = (SPI_Type *)SPI1_REG;
-    spi_cfg.pin_cs = pin_cs_cfg;
-    spi_cfg.pin_sck = pin_sck_cfg;
-    spi_cfg.pin_miso = pin_miso_cfg;
-    spi_cfg.pin_mosi = pin_mosi_cfg;
-    spi_cfg.baud_rate = 9000000;
-    spi_cfg.data_size = SPI_DATASIZE_8BIT;
-    spi_cfg.cpha = SPI_CPHA_1EDGE;
-    spi_cfg.cpol = SPI_CPOL_LOW;
-    spi_cfg.nss = SPI_NSS_SOFT;
-    spi_cfg.spi_mode = SPI_MASTER;
-    spi_cfg.mosi_dma = &dma_mosi_cfg;
-    spi_cfg.mosi_mode = SPI_MODE_DMA;
-    spi_cfg.miso_dma = NULL;
-    spi_cfg.miso_mode = SPI_MODE_DISABLE;
-    return setup_spi(&spi_cfg, freq.APB2_Freq);
+    return setup_spi(&cfg, freq.APB2_Freq);
 }
+
 
 int tft_spi_send(uint8_t *data, uint32_t size)
 {
     if (!data || size == 0 || size > SPI_TX_BUFFER_SIZE)
         return -1;
 
-
-    int status = send_data_spi_master(&spi_cfg, data, size);
+    int status = send_data_spi_master(&spi1_handle, data, size);
 
     return status;
 }
@@ -113,8 +111,7 @@ int tft_spi_recv(uint8_t *data, uint32_t size)
     if (!data || size == 0 || size > SPI_RX_BUFFER_SIZE)
         return -1;
 
-
-    int status = recv_data_spi_master(&spi_cfg, data, size);
+    int status = recv_data_spi_master(&spi1_handle, data, size);
 
     return status;
 }
