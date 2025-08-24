@@ -1,16 +1,28 @@
-#include "spi_board.h"
-#include "gpio.h"
-#include "rcc.h"
+#include "oled_board.h"
 #include "board_pins.h"
-#include <stdio.h>
-#include <string.h>
+#include "gpio.h"
+#include "memory_map.h"
+#include "timer.h"
+#include "spi.h"
+#include <stdlib.h>
+#include "rcc.h"
 #include "log.h"
+#include "graphics.h"
 
-#define SPI_TX_BUFFER_SIZE 512
-#define SPI_RX_BUFFER_SIZE 512
 
-SPI_HandleTypeDef spi1_handle = {0};
+
+#define OLED_RES_Port GPIOA_REG
+#define OLED_RES_Pin 1
+#define OLED_DC_Port GPIOA_REG
+#define OLED_DC_Pin 2
+
+#define OLED_BUFFER_SIZE (SSD1306_WIDTH * SSD1306_HEIGHT / 8)
+
+static OLED_Interface_t oled = {0};
+static SPI_HandleTypeDef spi1_handle = {0};
 // DMA_Config dma_miso_cfg = {0};
+
+static int init_spi();
 
 int init_spi()
 {
@@ -64,7 +76,7 @@ int init_spi()
 
     // Настройка SPI_HandleTypeDef
     spi1_handle.spi = (SPI_Type *)SPI1_REG;
-    spi1_handle.baud_rate = 9000000;
+    spi1_handle.baud_rate = 20000000;
     spi1_handle.data_size = SPI_DATASIZE_8BIT;
     spi1_handle.cpha = SPI_CPHA_1EDGE;
     spi1_handle.cpol = SPI_CPOL_LOW;
@@ -72,7 +84,6 @@ int init_spi()
     spi1_handle.spi_mode = SPI_MASTER;
     spi1_handle.mosi_mode = SPI_MODE_POLLING;
     spi1_handle.miso_mode = SPI_MODE_DISABLE;
-
 
     SPI_Config_t cfg = {
         .spi = spi1_handle.spi,
@@ -84,7 +95,7 @@ int init_spi()
         .spi_mode = spi1_handle.spi_mode,
         .miso_mode = spi1_handle.miso_mode,
         .mosi_mode = spi1_handle.mosi_mode,
-        .miso_dma = NULL, 
+        .miso_dma = NULL,
         .mosi_dma = &spi1_handle.mosi_dma,
         .pin_sck = pin_sck_cfg,
         .pin_miso = pin_miso_cfg,
@@ -95,23 +106,78 @@ int init_spi()
     return setup_spi(&cfg, freq.APB2_Freq);
 }
 
-
-int tft_spi_send(uint8_t *data, uint32_t size)
+int oled_spi_send(uint8_t *data, uint32_t size)
 {
-    if (!data || size == 0 || size > SPI_TX_BUFFER_SIZE)
+    if (!data || size == 0 || size > OLED_BUFFER_SIZE)  // <-- проверка на полный буфер
         return -1;
 
     int status = send_data_spi_master(&spi1_handle, data, size);
-
     return status;
 }
 
-int tft_spi_recv(uint8_t *data, uint32_t size)
+int oled_spi_recv(uint8_t *data, uint32_t size)
 {
-    if (!data || size == 0 || size > SPI_RX_BUFFER_SIZE)
+    if (!data || size == 0 || size > OLED_BUFFER_SIZE)  // проверка на полный буфер
         return -1;
 
-    int status = recv_data_spi_master(&spi1_handle, data, size);
-
+    int status = recv_data_spi_master(&spi1_handle, data, size);  // <-- правильно recv
     return status;
 }
+
+void oled_set_dc(int state)
+{
+    if (state)
+        set_pin_gpio(OLED_DC_Port, OLED_DC_Pin);
+    else
+        reset_pin_gpio(OLED_DC_Port, OLED_DC_Pin);
+}
+
+void oled_set_res(int state)
+{
+    if (state)
+        set_pin_gpio(OLED_RES_Port, OLED_RES_Pin);
+    else
+        reset_pin_gpio(OLED_RES_Port, OLED_RES_Pin);
+}
+
+void oled_delay_ms(uint32_t ms)
+{
+    delay_timer(ms);
+}
+
+void oled_init_board_interface()
+{
+    GPIO_PinConfig_t pin_res = {
+        .gpiox = OLED_RES_Port,
+        .pin = OLED_RES_Pin,
+        .speed = GPIO_OUTPUT_50MHz,
+        .pin_mode = GPIO_OUTPUT_GP_PP,
+        .af_remap = 0,
+    };
+    GPIO_PinConfig_t pin_dc = {
+        .gpiox = OLED_DC_Port,
+        .pin = OLED_DC_Pin,
+        .speed = GPIO_OUTPUT_50MHz,
+        .pin_mode = GPIO_OUTPUT_GP_PP,
+        .af_remap = 0,
+    };
+
+    set_gpio_conf(&pin_dc);
+    set_gpio_conf(&pin_res);
+
+    int status = init_spi();
+    if (status != 0) {
+        return;
+    }
+
+    oled.set_dc = oled_set_dc;
+    oled.set_res = oled_set_res;
+    oled.send = oled_spi_send;
+    oled.recv = oled_spi_recv;
+    oled.delay_ms = oled_delay_ms;
+
+    oled_init(&oled);
+
+    
+}
+

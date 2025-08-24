@@ -10,6 +10,7 @@ add_library(${LIBRARY_CORE_NAME} STATIC
     led.h led.c
     timer.h timer.c
     spi.h spi.c
+    i2c.h i2c.c
     usart.h usart.c
     dma.h dma.c
     IRQ.h IRQ.c

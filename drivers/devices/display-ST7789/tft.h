@@ -1,7 +1,8 @@
+#pragma once
+
 #include <stdint.h>
 #include "math_pixels.h"
 
-#pragma once
 
 #define DISPLAY_WIDTH 240
 #define DISPLAY_HEIGHT 240
@@ -12,6 +13,8 @@ typedef struct
     uint16_t Green : 6;
     uint16_t Red : 5;
 } RGB_Type; // 5-6-5
+
+
 
 typedef struct
 {
@@ -120,8 +123,8 @@ typedef struct
 // For cmd COLMOD
 #define BIT_PIXEl_12 (0b011 << 0)
 #define BIT_PIXEl_16 (0b101 << 0)
-#define BIT_PIXEl_168 (0b110 << 0)
-#define BIT_PIXEl_16M_TRUNC (0b111 << 0)
+#define BIT_PIXEL_18 (0b110 << 0)
+#define BIT_PIXEL_24_TRUNC (0b111 << 0)
 
 #define COLOR_MODE_65K (0b101 << 4)
 #define COLOR_MODE_262K (0b110 << 4)

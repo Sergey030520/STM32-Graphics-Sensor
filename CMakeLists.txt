@@ -27,20 +27,26 @@ add_executable(${EXECUTABLE}
     startup/startup_stm32f103c8tx.s
     main.c
     usart_board.h usart_board.c
-    spi_board.h spi_board.c
+    oled_board.h oled_board.c
     tft_board.h tft_board.c
+    i2c_board.h i2c_board.c
+    gfx.h gfx.c
 )
 
 
 target_compile_options(drivers_core PRIVATE ${ARM_FLAGS})
 target_compile_options(logger PRIVATE ${ARM_FLAGS})
 target_compile_options(driver_tft_st7789 PRIVATE ${ARM_FLAGS})
+target_compile_options(driver_oled_ssd1306 PRIVATE ${ARM_FLAGS})
+target_compile_options(driver_graphics PRIVATE ${ARM_FLAGS})
 target_compile_options(${EXECUTABLE} PRIVATE ${ARM_FLAGS})
 
 target_link_libraries(${EXECUTABLE} PRIVATE
         drivers_core
         logger
         driver_tft_st7789
+        driver_oled_ssd1306
+        driver_graphics
         m
 )
 

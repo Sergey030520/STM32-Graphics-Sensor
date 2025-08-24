@@ -173,6 +173,10 @@ int spi_send_dma(SPI_HandleTypeDef *cfg, uint8_t *data, uint32_t size)
 
     dma_init(&cfg->mosi_dma);
     dma_start(&cfg->mosi_dma);
+    
+     
+    while (!dma_transfer_complete(cfg->mosi_dma.dma, cfg->mosi_dma.channel))
+        ;
     return 0;
 }
 

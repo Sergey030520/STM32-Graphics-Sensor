@@ -15,7 +15,7 @@ int usart_adapter(const char *data, int length)
 }
 
 
-void init_uart()
+void board_init_uart()
 {
     DMA_Config dma_tx_config = {
         .dma = DMA1_REG,

@@ -12,6 +12,9 @@
         "spi_board.h": "c",
         "stdint.h": "c",
         "spi.h": "c",
-        "log.h": "c"
+        "log.h": "c",
+        "usart.h": "c",
+        "stdlib.h": "c",
+        "*.с": "c"
     }
 }

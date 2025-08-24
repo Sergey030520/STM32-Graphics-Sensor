@@ -103,7 +103,10 @@ void set_MemAccessMode(uint8_t rotation, uint8_t vert_mirror, uint8_t horiz_mirr
         mode = MADCLT_MX | MADCLT_MV;
         break;
     case 6:
-        mode = MADCLT_MY | MADCLT_MY;
+        if (vert_mirror)
+            mode |= MADCLT_ML;
+        if (horiz_mirror)
+            mode |= MADCLT_MH;
         break;
     case 7:
         mode = MADCLT_MX | MADCLT_MY | MADCLT_MV;
@@ -166,16 +169,16 @@ void set_address_window(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
 {
     set_column_display(x0, x1);
     set_row_display(y0, y1);
-    set_MemAccessMode(4, 1, 1, 1);
     send_command(CMD_RAMWR);
 }
 
 void fill_color_display(uint16_t color)
 {
-    if (!tft_if) return;
+    if (!tft_if)
+        return;
 
     set_address_window(0, 0, DISPLAY_WIDTH - 1, DISPLAY_HEIGHT - 1);
-    send_command(CMD_RAMWR); 
+    send_command(CMD_RAMWR);
 
     uint16_t buf[128];
     for (int i = 0; i < 128; i++)
@@ -185,11 +188,30 @@ void fill_color_display(uint16_t color)
     while (pixels > 0)
     {
         uint32_t toSend = pixels > 128 ? 128 : pixels;
-        send_data_array_command((uint8_t*)buf, toSend * 2);
+        send_data_array_command((uint8_t *)buf, toSend * 2);
         pixels -= toSend;
     }
 }
 
+void fill_screen(uint16_t color)
+{
+    if (!tft_if)
+        return;
+
+    // задаём область на весь экран
+    set_address_window(0, 0, DISPLAY_WIDTH - 1, DISPLAY_HEIGHT - 1);
+
+    // готовим цвет в формате big-endian (старший байт первым)
+    uint8_t hi = color >> 8;
+    uint8_t lo = color & 0xFF;
+
+    // проходимся по всем пикселям и пишем по два байта
+    for (uint32_t i = 0; i < DISPLAY_WIDTH * DISPLAY_HEIGHT; i++)
+    {
+        send_data_command(hi);
+        send_data_command(lo);
+    }
+}
 
 void draw_line(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t color)
 {
@@ -238,14 +260,12 @@ void draw_rect(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t
 
 void draw_pixel(uint16_t x, uint16_t y, uint16_t color)
 {
-    if (x < 0 || x > DISPLAY_WIDTH)
+    if (x >= DISPLAY_WIDTH || y >= DISPLAY_HEIGHT)
     {
-        ledOn(1);
         return;
     }
     if (y < 0 || y > DISPLAY_HEIGHT)
     {
-        ledOn(1);
         return;
     }
 
@@ -369,13 +389,11 @@ void fill(uint16_t startX, uint16_t startY, uint16_t endX, uint16_t endY, uint16
 {
     if (startX < 0 || startX >= DISPLAY_WIDTH || endX < 0 || endX >= DISPLAY_WIDTH)
     {
-        ledOn(1);
         return;
     }
 
-    if (startY < 0 || startY >= DISPLAY_WIDTH || endY < 0 || endY >= DISPLAY_WIDTH)
+    if (startY < 0 || startY >= DISPLAY_HEIGHT || endY < 0 || endY >= DISPLAY_HEIGHT)
     {
-        ledOn(1);
         return;
     }
 
@@ -399,48 +417,81 @@ void clear_screen()
     fill_color_display(RGB565(0, 0, 0));
 }
 
+// void st7789_init(TFT_Interface_t *tft_interface)
+// {
+//     if (tft_interface == NULL)
+//     {
+//         return;
+//     }
+//     tft_if = tft_interface;
+
+//     hard_reset();
+//     LOG_INFO("1. set hard_reset\r\n");
+
+//     soft_reset();
+//     LOG_INFO("2. soft reset\r\n");
+
+//     tft_if->delay_ms(150);
+
+//     sleep_mode_display(0);
+
+//     LOG_INFO("3. sleep mode display\r\n");
+
+//     set_color_mode(BIT_PIXEl_16 | COLOR_MODE_65K);
+//     set_MemAccessMode(4, 0, 0, 1);
+
+//     LOG_INFO("4. set color\r\n");
+
+//     tft_if->delay_ms(10);
+
+//     inversion_mode(1);
+
+//     LOG_INFO("5. inversion mode\r\n");
+
+//     send_command(CMD_NORON);
+
+//     LOG_INFO("6. send cmd noron\r\n");
+
+//     fill_color_display(0x00);
+
+//     LOG_INFO("7. fill color display\r\n");
+
+//     set_display_power(1);
+
+//     LOG_INFO("8. set display power\r\n");
+
+//     tft_if->delay_ms(100);
+//     tft_if->set_brightness(100);
+// }
+
 void st7789_init(TFT_Interface_t *tft_interface)
 {
-    if (tft_interface == NULL)
-    {
-        return;
-    }
     tft_if = tft_interface;
 
     hard_reset();
-    LOG_INFO("1. set hard_reset\r\n");
+    tft_if->delay_ms(120);
 
-    soft_reset();
-    LOG_INFO("2. soft reset\r\n");
+    send_command(CMD_SLPOUT); // 0x11 — выход из сна
+    tft_if->delay_ms(120);
 
-    tft_if->delay_ms(150);
-
-    sleep_mode_display(0);
-
-    LOG_INFO("3. sleep mode display\r\n");
-
-    set_color_mode(BIT_PIXEl_16 | COLOR_MODE_65K);
-
-    LOG_INFO("4. set color\r\n");
-
+    send_command(CMD_COLMOD); // 0x3A — формат цвета
+    send_data_command(0x55);  // 16 бит на пиксель (RGB565)
     tft_if->delay_ms(10);
 
-    inversion_mode(1);
+    send_command(CMD_MADCTL); // 0x36 — ориентация и порядок цветов
+    send_data_command(MADCLT_MX | MADCLT_MY | MADCLT_BGR);  // попробуем дефолт: RGB, без зеркал
+    tft_if->delay_ms(10);
 
-    LOG_INFO("5. inversion mode\r\n");
+    // send_command(CMD_INVON); // 0x21 — включить инверсию (некоторые панели требуют)
+    // tft_if->delay_ms(10);
 
-    send_command(CMD_NORON);
-
-    LOG_INFO("6. send cmd noron\r\n");
-
-    fill_color_display(0x00);
-
-    LOG_INFO("7. fill color display\r\n");
-
-    set_display_power(1);
-
-    LOG_INFO("8. set display power\r\n");
-
+    send_command(CMD_DISPON); // 0x29 — включить дисплей
     tft_if->delay_ms(100);
-    tft_if->set_brightness(100);
+
+    // тестовая заливка
+    fill_screen(RGB565(255, 0, 0));
+}
+
+void set_brightness(uint8_t volume){
+    tft_if->set_brightness(volume);
 }

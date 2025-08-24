@@ -1,8 +1,9 @@
 #include "tft_board.h"
+#include "board_pins.h"
 #include "gpio.h"
 #include "memory_map.h"
 #include "timer.h"
-#include "spi_board.h"
+#include "spi.h"
 #include <stdlib.h>
 #include "rcc.h"
 #include "log.h"
@@ -16,6 +17,16 @@
 #define TFT_BLK_Pin 6
 
 
+#define SPI_TX_BUFFER_SIZE 512
+#define SPI_RX_BUFFER_SIZE 512
+
+
+static SPI_HandleTypeDef spi1_handle = {0};
+
+
+static int init_spi();
+int tft_spi_recv(uint8_t *data, uint32_t size);
+int tft_spi_send(uint8_t *data, uint32_t size);
 
 void tft_set_dc(int state)
 {
@@ -52,6 +63,110 @@ void tft_set_brightness(uint8_t value)
 }
 
 
+int init_spi()
+{
+    RCC_Frequencies freq = {0};
+    get_clock_frequencies(&freq);
+
+    enable_and_reset_rcc(RCC_BUS_APB2, RCC_APB2ENR_SPI1EN);
+
+    // Настройка пинов SPI
+    GPIO_PinConfig_t pin_sck_cfg = {
+        .gpiox = SPI1_SCK_PORT,
+        .pin = SPI1_SCK_PIN,
+        .speed = GPIO_OUTPUT_50MHz,
+        .pin_mode = GPIO_OUTPUT_AF_PP,
+        .af_remap = 0,
+    };
+
+    GPIO_PinConfig_t pin_cs_cfg = {
+        .gpiox = SPI1_CS_PORT,
+        .pin = SPI1_CS_PIN,
+        .speed = GPIO_OUTPUT_50MHz,
+        .pin_mode = GPIO_OUTPUT_GP_PP,
+        .af_remap = 0,
+    };
+
+    GPIO_PinConfig_t pin_miso_cfg = {
+        .gpiox = SPI1_MISO_PORT,
+        .pin = SPI1_MISO_PIN,
+        .speed = GPIO_MODE_INPUT,
+        .pin_mode = GPIO_INPUT_FLOATING,
+        .af_remap = 0,
+    };
+
+    GPIO_PinConfig_t pin_mosi_cfg = {
+        .gpiox = SPI1_MOSI_PORT,
+        .pin = SPI1_MOSI_PIN,
+        .speed = GPIO_OUTPUT_50MHz,
+        .pin_mode = GPIO_OUTPUT_AF_PP,
+        .af_remap = 0,
+    };
+
+    // Настройка DMA (mosi)
+    spi1_handle.mosi_dma.dma = (DMA_Type *)DMA1_REG;
+    spi1_handle.mosi_dma.channel = CHANNEL_3;
+    spi1_handle.mosi_dma.direction = DMA_DIR_MEM_TO_PERIPH;
+    spi1_handle.mosi_dma.mem_size = DMA_DATASIZE_8BIT;
+    spi1_handle.mosi_dma.periph_size = DMA_DATASIZE_8BIT;
+    spi1_handle.mosi_dma.inc_mem = 1;
+    spi1_handle.mosi_dma.inc_periph = 0;
+    spi1_handle.mosi_dma.circular = 0;
+
+    // Настройка SPI_HandleTypeDef
+    spi1_handle.spi = (SPI_Type *)SPI1_REG;
+    spi1_handle.baud_rate = 20000000;
+    spi1_handle.data_size = SPI_DATASIZE_8BIT;
+    spi1_handle.cpha = SPI_CPHA_1EDGE;
+    spi1_handle.cpol = SPI_CPOL_LOW;
+    spi1_handle.nss = SPI_NSS_SOFT;
+    spi1_handle.spi_mode = SPI_MASTER;
+    spi1_handle.mosi_mode = SPI_MODE_POLLING;
+    spi1_handle.miso_mode = SPI_MODE_DISABLE;
+
+
+    SPI_Config_t cfg = {
+        .spi = spi1_handle.spi,
+        .baud_rate = spi1_handle.baud_rate,
+        .data_size = spi1_handle.data_size,
+        .cpha = spi1_handle.cpha,
+        .cpol = spi1_handle.cpol,
+        .nss = spi1_handle.nss,
+        .spi_mode = spi1_handle.spi_mode,
+        .miso_mode = spi1_handle.miso_mode,
+        .mosi_mode = spi1_handle.mosi_mode,
+        .miso_dma = NULL, 
+        .mosi_dma = &spi1_handle.mosi_dma,
+        .pin_sck = pin_sck_cfg,
+        .pin_miso = pin_miso_cfg,
+        .pin_mosi = pin_mosi_cfg,
+        .pin_cs = pin_cs_cfg,
+    };
+    return setup_spi(&cfg, freq.APB2_Freq);
+}
+
+
+int tft_spi_send(uint8_t *data, uint32_t size)
+{
+    if (!data || size == 0 || size > SPI_TX_BUFFER_SIZE)
+        return -1;
+
+    int status = send_data_spi_master(&spi1_handle, data, size);
+
+    return status;
+}
+
+int tft_spi_recv(uint8_t *data, uint32_t size)
+{
+    if (!data || size == 0 || size > SPI_RX_BUFFER_SIZE)
+        return -1;
+
+    int status = recv_data_spi_master(&spi1_handle, data, size);
+
+    return status;
+}
+
+
 void tft_init_board_interface(TFT_Interface_t *tft)
 {
 
@@ -80,6 +195,10 @@ void tft_init_board_interface(TFT_Interface_t *tft)
     set_gpio_conf(&pin_dc);
     set_gpio_conf(&pin_res);
 
+    int status = init_spi();
+    if(status != 0){
+        return -2;
+    }
 
     PWM_Config_t pwm_cfg = {
         .channel = TIM_CHANNEL1,
@@ -89,7 +208,10 @@ void tft_init_board_interface(TFT_Interface_t *tft)
         .timer = TIM4_REG
     };
 
+
     init_pwm_timer(&pwm_cfg);
+
+
 
     tft->set_dc = tft_set_dc;
     tft->set_res = tft_set_res;

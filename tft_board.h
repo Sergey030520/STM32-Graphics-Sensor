@@ -11,4 +11,6 @@ void tft_set_blk(int state);
 void tft_delay_ms(uint32_t ms);
 void tft_set_brightness(uint8_t value);
 
+
+
 void tft_init_board_interface(TFT_Interface_t *tft);
