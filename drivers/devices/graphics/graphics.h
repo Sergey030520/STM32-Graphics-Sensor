@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "graphics.h"
 #include "fonts.h"
+#include "math_pixels.h"
 
 
 typedef struct {
@@ -17,11 +18,10 @@ typedef struct {
 
 
 void gfx_set_font(GFX_Font_t *font);
-// Примитивы
-// void gfx_draw_line(GFX_Display_t *disp, uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, GFX_Color color);
-// void gfx_draw_rect(GFX_Display_t *disp, uint16_t x, uint16_t y, uint16_t w, uint16_t h, GFX_Color color);
-// void gfx_fill_rect(GFX_Display_t *disp, uint16_t x, uint16_t y, uint16_t w, uint16_t h, GFX_Color color);
-// void gfx_draw_triangle(GFX_Display_t *disp, uint16_t x0, uint16_t y0,
-                    //    uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, GFX_Color color);
-void gfx_draw_char(GFX_Display_t *disp, uint16_t x, uint16_t y, char c, GFX_Color color);
-void gfx_draw_string(GFX_Display_t *disp, uint16_t x, uint16_t y, const char *str, GFX_Color color);
+void gfx_draw_char(GFX_Display_t *disp, uint16_t x, uint16_t y, char c, GFX_Color fg, GFX_Color bg);
+void gfx_draw_string(GFX_Display_t *disp, uint16_t x, uint16_t y, const char *str, GFX_Color fg, GFX_Color bg);
+void gfx_fill(GFX_Display_t *disp, Point start, Point end, GFX_Color color);
+void gfx_draw_circle(GFX_Display_t *disp, Point center, uint16_t radius, GFX_Color color);
+void gfx_draw_triangle(GFX_Display_t *disp, Point p0, Point p1, Point p2, GFX_Color color);
+void gfx_draw_line(GFX_Display_t *disp, Point p0, Point p1, GFX_Color color);
+void gfx_draw_rect(GFX_Display_t *disp, Point topLeft, Point bottomRight, GFX_Color color);
