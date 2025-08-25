@@ -11,11 +11,12 @@
 
 #include "gfx.h"
 
-
-
 int init_rcc();
 int init_board();
 void print_clock_frequencies();
+
+
+
 
 int main()
 {
@@ -31,42 +32,12 @@ int main()
 
     print_clock_frequencies();
 
-// #ifdef TFT_BOARD
-    // TFT_Interface_t tft_if = {0};
-
-    // LOG_INFO("Init tft\r\n");
-    // tft_init_board_interface(&tft_if);
-
-    // fill_color_display(RGB565(255, 0, 0));
-    // draw_line(160,50, 0, 67, RGB565(255, 0, 0));
-    //
-    // 63 g, 31 r, 31 - b
-    // uint16_t color = 0xF8;
-
-    //
-    // fill(0, 0, 239, 239, RGB565(0, 255, 0));
-
-    // draw_line(160,50, 0, 67, RGB565(255, 0, 0));
-    // draw_line(160,160, 200, 160, RGB565(0, 255, 0));
-
-    // draw_rect(200, 200, 20, 20,  RGB565(255, 255, 0));
-    // draw_rect(140, 140, 50, 50,  RGB565(0, 255, 255));
-    // draw_rect(0, 0, 70, 70,  RGB565(0, 255, 255));
-
-    // Point point1 = {60, 20}, point2 = {30, 60},
-    //       point3 = {90, 60};
-
-    // draw_triangle(point1, point2, point3, RGB565(255, 0, 0));
-    // draw_circle(140, 140, 30, RGB565(0, 0, 255));
-    // draw_line_bresenham(200, 200, 106, 203, RGB565(0,0,255));
-    // set_brightness(90);
-    // // fill();
-
-// #else 
     
-// #endif
     gfx_drv_init();
-    gfx_drv_draw_string(0, 0, "HELLO!");
+
+    gfx_test_display();
+    
+    gfx_drv_update();
 
     while (1)
     {
@@ -183,3 +154,4 @@ void print_clock_frequencies()
     LOG_INFO("ADC  : %lu Hz\r\n", freq.ADC_Freq);
     LOG_INFO("source: %d\r\n", get_sysclk_source());
 }
+

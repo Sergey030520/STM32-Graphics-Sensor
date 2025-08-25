@@ -15,6 +15,10 @@
         "log.h": "c",
         "usart.h": "c",
         "stdlib.h": "c",
-        "*.с": "c"
+        "*.с": "c",
+        "gfx.h": "c",
+        "oled_ssd1306.h": "c",
+        "fonts.h": "c",
+        "graphics.h": "c"
     }
 }

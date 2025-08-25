@@ -177,7 +177,5 @@ void oled_init_board_interface()
     oled.delay_ms = oled_delay_ms;
 
     oled_init(&oled);
-
-    
 }
 
