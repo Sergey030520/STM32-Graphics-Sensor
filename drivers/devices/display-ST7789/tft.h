@@ -1,7 +1,6 @@
 #pragma once
 
 #include <stdint.h>
-#include "math_pixels.h"
 
 
 #define DISPLAY_WIDTH 240
@@ -138,40 +137,28 @@ typedef struct
 #define MADCLT_BGR (0x1 << 3)
 #define MADCLT_MH (0x1 << 2)
 
-#define RGB565(r, g, b) (((r & 0xF8) << 8) | ((g & 0xFC) << 3) | ((b & 0xF8) >> 3))
+#define RGB565(r, g, b) ( ((r & 0xF8) << 8) | \
+                          ((g & 0xFC) << 3) | \
+                          ((b & 0xF8) >> 3) )
+
 
 #define VIOLET_COLOR RGB565(255, 0, 255)
 #define RED_COLOR RGB565(255, 0, 0)
 #define GREEN_COLOR RGB565(0, 255, 0)
 #define BLUE_COLOR RGB565(0, 0, 255)
-#define YELLOW_COLOR RGB565(255, 0, 255)
+#define YELLOW_COLOR RGB565(255, 255, 0)  
+
 
 // brightness
 #define BCTRL_ON (0x1 << 5)
 #define DISPLAY_DIMMING (0x1 << 3)
 #define BLACKLIGHT_CONTROL (0x1 << 2)
 
-void send_command(uint8_t command);
-void send_data_array_command(uint8_t *data, uint32_t size);
-void send_data_command(uint8_t data);
 
-void set_brightness(uint8_t volume);
 
-void set_address_window(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
-
-// simple objects
-void draw_pixel(uint16_t x, uint16_t y, uint16_t color);
-void draw_line(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t color);
-void draw_rect(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t color);
-void draw_circle(uint16_t x0, uint16_t y0, uint16_t radius, uint16_t color);
-void draw_triangle(Point point1, Point point2, Point point3, uint16_t color);
-void draw_line_bresenham(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t color);
-
-void fill(uint16_t startX, uint16_t startY, uint16_t endX, uint16_t endY, uint16_t color);
-void fill_color_display(uint16_t color);
-
-void clear_screen();
-
+void st7789_set_brightness(uint8_t volume);
+void st7789_draw_pixel(uint16_t x, uint16_t y, uint16_t color);
+void st7789_fill_background(uint16_t color);
 void st7789_init(TFT_Interface_t *tft_interface);
 
-// https://blog.embeddedexpert.io/?p=1215
+

@@ -8,7 +8,6 @@
 #include "rcc.h"
 #include "log.h"
 
-
 #define TFT_RES_Port GPIOA_REG
 #define TFT_RES_Pin 1
 #define TFT_DC_Port GPIOA_REG
@@ -16,13 +15,12 @@
 #define TFT_BLK_Port GPIOB_REG
 #define TFT_BLK_Pin 6
 
-
 #define SPI_TX_BUFFER_SIZE 512
 #define SPI_RX_BUFFER_SIZE 512
 
-
+TFT_Interface_t tft = {0};
 static SPI_HandleTypeDef spi1_handle = {0};
-
+PWM_Config_t pwm_cfg = {0};
 
 static int init_spi();
 int tft_spi_recv(uint8_t *data, uint32_t size);
@@ -59,9 +57,8 @@ void tft_delay_ms(uint32_t ms)
 
 void tft_set_brightness(uint8_t value)
 {
-    set_pwm_timer(TIM4_REG, value);
+    set_pwm_timer(pwm_cfg.timer, value);
 }
-
 
 int init_spi()
 {
@@ -124,7 +121,6 @@ int init_spi()
     spi1_handle.mosi_mode = SPI_MODE_POLLING;
     spi1_handle.miso_mode = SPI_MODE_DISABLE;
 
-
     SPI_Config_t cfg = {
         .spi = spi1_handle.spi,
         .baud_rate = spi1_handle.baud_rate,
@@ -135,7 +131,7 @@ int init_spi()
         .spi_mode = spi1_handle.spi_mode,
         .miso_mode = spi1_handle.miso_mode,
         .mosi_mode = spi1_handle.mosi_mode,
-        .miso_dma = NULL, 
+        .miso_dma = NULL,
         .mosi_dma = &spi1_handle.mosi_dma,
         .pin_sck = pin_sck_cfg,
         .pin_miso = pin_miso_cfg,
@@ -144,7 +140,6 @@ int init_spi()
     };
     return setup_spi(&cfg, freq.APB2_Freq);
 }
-
 
 int tft_spi_send(uint8_t *data, uint32_t size)
 {
@@ -167,15 +162,15 @@ int tft_spi_recv(uint8_t *data, uint32_t size)
 }
 
 
-void tft_init_board_interface(TFT_Interface_t *tft)
+void tft_init_board_interface()
 {
 
     GPIO_PinConfig_t pin_blk = {
-        .gpiox = TFT_BLK_Port,
-        .pin = TFT_BLK_Pin,
+        .gpiox = GPIOB_REG,
+        .pin = 6,
         .speed = GPIO_OUTPUT_50MHz,
         .pin_mode = GPIO_OUTPUT_AF_PP,
-        .af_remap = 0,
+        .af_remap = GPIO_AFIO_DEFAULT,
     };
     GPIO_PinConfig_t pin_res = {
         .gpiox = TFT_RES_Port,
@@ -196,30 +191,27 @@ void tft_init_board_interface(TFT_Interface_t *tft)
     set_gpio_conf(&pin_res);
 
     int status = init_spi();
-    if(status != 0){
+    if (status != 0)
+    {
         return -2;
     }
 
-    PWM_Config_t pwm_cfg = {
-        .channel = TIM_CHANNEL1,
-        .duty_cycle = 50,
-        .period = 99,
-        .prescaler = 36,
-        .timer = TIM4_REG
-    };
+    pwm_cfg.timer = (GP_Timer_Type *)TIM4_REG;
+    pwm_cfg.channel = TIM_CHANNEL1;
+    pwm_cfg.duty_cycle = 50; // 50% скважность
+    pwm_cfg.pwm_freq = 20000; // 20 кГц
 
+    RCC_Frequencies freq = {0};
+    get_clock_frequencies(&freq);
+    init_pwm_timer(&pwm_cfg, freq.APB1_Freq);
 
-    init_pwm_timer(&pwm_cfg);
+    tft.set_dc = tft_set_dc;
+    tft.set_res = tft_set_res;
+    tft.set_blk = tft_set_blk;
+    tft.spi_send = tft_spi_send;
+    tft.spi_recv = tft_spi_recv;
+    tft.delay_ms = tft_delay_ms;
+    tft.set_brightness = tft_set_brightness;
 
-
-
-    tft->set_dc = tft_set_dc;
-    tft->set_res = tft_set_res;
-    tft->set_blk = tft_set_blk;
-    tft->spi_send = tft_spi_send;
-    tft->spi_recv = tft_spi_recv;
-    tft->delay_ms = tft_delay_ms;
-    tft->set_brightness = tft_set_brightness;
-
-    st7789_init(tft);
+    st7789_init(&tft);
 }

@@ -129,16 +129,16 @@ typedef enum
 void init_timer();
 void delay_timer(uint32_t ms);
 
-
+#pragma pack(push, 1)
 typedef struct {
-    GP_Timer_Type *timer;     
-    uint32_t prescaler;       
-    uint32_t period;          
+    GP_Timer_Type *timer;            
     uint8_t channel;          
-    uint8_t duty_cycle;       
+    uint8_t duty_cycle;   
+    uint32_t pwm_freq;    
 } PWM_Config_t;
+#pragma pack(pop)
 
 
-void init_pwm_timer(PWM_Config_t *cfg);
+void init_pwm_timer(PWM_Config_t *cfg, uint32_t timer_clk);
 
-void set_pwm_timer(GP_Timer_Type *timer, uint8_t volume);
+void set_pwm_timer(GP_Timer_Type *timer, uint8_t duty);

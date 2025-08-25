@@ -58,6 +58,34 @@ typedef struct
 #define AFIO_USART1_NO_REMAP (0x0 << 2)
 #define AFIO_USART1_REMAP (0x1 << 2)
 
+typedef enum {
+    GPIO_AFIO_DEFAULT    = 0x0,        
+    GPIO_AFIO_SPI1_REMAP = (1 << 0),   
+    GPIO_AFIO_I2C1_REMAP = (1 << 1),   
+    GPIO_AFIO_USART1_REMAP = (1 << 2), 
+    GPIO_AFIO_USART2_REMAP = (1 << 3), 
+    GPIO_AFIO_USART3_PARTIAL_REMAP = (1 << 4), 
+    GPIO_AFIO_USART3_FULL_REMAP    = (3 << 4), 
+    GPIO_AFIO_TIM1_PARTIAL_REMAP   = (1 << 6),
+    GPIO_AFIO_TIM1_FULL_REMAP      = (3 << 6),
+    GPIO_AFIO_TIM2_PARTIAL1_REMAP  = (1 << 8),
+    GPIO_AFIO_TIM2_PARTIAL2_REMAP  = (2 << 8),
+    GPIO_AFIO_TIM2_FULL_REMAP      = (3 << 8),
+    GPIO_AFIO_TIM3_PARTIAL_REMAP   = (2 << 10),
+    GPIO_AFIO_TIM3_FULL_REMAP      = (3 << 10),
+    GPIO_AFIO_TIM4_REMAP           = (1 << 12),
+    GPIO_AFIO_CAN_REMAP1           = (2 << 13),
+    GPIO_AFIO_CAN_REMAP2           = (3 << 13),
+    GPIO_AFIO_PD01_REMAP           = (1 << 15), 
+    GPIO_AFIO_TIM5CH4_REMAP        = (1 << 16),
+    GPIO_AFIO_ADC1_ETRGINJ_REMAP   = (1 << 17),
+    GPIO_AFIO_ADC1_ETRGREG_REMAP   = (1 << 18),
+    GPIO_AFIO_ADC2_ETRGINJ_REMAP   = (1 << 19),
+    GPIO_AFIO_ADC2_ETRGREG_REMAP   = (1 << 20),
+} GPIO_AFIO_Remap_t;
+
+
+
 typedef struct
 {
     GPIO_Type *gpiox;

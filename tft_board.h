@@ -13,4 +13,4 @@ void tft_set_brightness(uint8_t value);
 
 
 
-void tft_init_board_interface(TFT_Interface_t *tft);
+void tft_init_board_interface();

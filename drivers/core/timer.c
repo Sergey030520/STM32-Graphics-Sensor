@@ -38,64 +38,78 @@ void delay_timer(uint32_t ms)
     timer->SR = 0;
 }
 
-void set_pwm_timer(GP_Timer_Type *timer, uint8_t volume)
+void set_pwm_timer(GP_Timer_Type *timer, uint8_t duty)
 {
-    timer->CCR1 = volume;
+    uint32_t arr = timer->ARR;
+    timer->CCR1 = (arr + 1) * duty / 100;
 }
 
-
-
-void init_pwm_timer(PWM_Config_t *cfg)
+void init_pwm_timer(PWM_Config_t *cfg, uint32_t timer_clk)
 {
     GP_Timer_Type *timer = cfg->timer;
 
+    // Сброс таймера
     timer->CR1 = 0;
     timer->CNT = 0;
 
-    timer->PSC = cfg->prescaler;
-    timer->ARR = cfg->period;
+    
+    uint32_t target_freq = cfg->pwm_freq;
+    uint32_t prescaler = 0;
+    uint32_t arr = 0xFFFF;
 
-    switch (cfg->channel)
+    for (prescaler = 0; prescaler <= 0xFFFF; prescaler++)
     {
-    case TIM_CHANNEL1:
-        timer->CCMR1 &= ~(0x7 << 4); 
-        timer->CCMR1 |= TIMER_CCMRx_OC1M_PWM << 4;
-        timer->CCER &= ~0x1;
-        timer->CCER |= 0x1; 
-        timer->CCR1 = (cfg->period + 1) * cfg->duty_cycle / 100;
-        break;
-
-    case TIM_CHANNEL2:
-        timer->CCMR1 &= ~(0x7 << 12); 
-        timer->CCMR1 |= TIMER_CCMRx_OC1M_PWM << 12;
-        timer->CCER &= ~0x10; 
-        timer->CCER |= 0x10;  
-        timer->CCR2 = (cfg->period + 1) * cfg->duty_cycle / 100;
-        break;
-
-    case TIM_CHANNEL3:
-        timer->CCMR2 &= ~(0x7 << 4); 
-        timer->CCMR2 |= TIMER_CCMRx_OC1M_PWM << 4;
-        timer->CCER &= ~0x100; 
-        timer->CCER |= 0x100;  
-        timer->CCR3 = (cfg->period + 1) * cfg->duty_cycle / 100;
-        break;
-
-    case TIM_CHANNEL4:
-        timer->CCMR2 &= ~(0x7 << 12); 
-        timer->CCMR2 |= TIMER_CCMRx_OC1M_PWM << 12;
-        timer->CCER &= ~0x1000; 
-        timer->CCER |= 0x1000;  
-        timer->CCR4 = (cfg->period + 1) * cfg->duty_cycle / 100;
-        break;
-
-    default:
-        break;
+        arr = timer_clk / ((prescaler + 1) * target_freq) - 1;
+        if (arr <= 0xFFFF)
+            break;
     }
 
-    timer->CCMR1 |= TIMER_CCMRx_OC1M_PWM << 4;
-    timer->CCER |= TIMER_CCER_CCx(cfg->channel, 0);
+    timer->PSC = prescaler;
+    timer->ARR = arr;
 
+    // Вычисляем CCR для скважности
+    uint32_t ccr_val = (arr + 1) * cfg->duty_cycle / 100;
+
+    // Настраиваем канал
+    switch (cfg->channel)
+    {
+        case TIM_CHANNEL1:
+            timer->CCMR1 &= ~(0x7 << 4);
+            timer->CCMR1 |= (TIMER_CCMRx_OC1M_PWM << 4);
+            timer->CCMR1 |= (1 << 3); // OC1PE preload enable
+            timer->CCER |= 0x1;       // CC1E enable
+            timer->CCR1 = ccr_val;
+            break;
+
+        case TIM_CHANNEL2:
+            timer->CCMR1 &= ~(0x7 << 12);
+            timer->CCMR1 |= (TIMER_CCMRx_OC1M_PWM << 12);
+            timer->CCMR1 |= (1 << 11); // OC2PE preload enable
+            timer->CCER |= 0x10;       // CC2E enable
+            timer->CCR2 = ccr_val;
+            break;
+
+        case TIM_CHANNEL3:
+            timer->CCMR2 &= ~(0x7 << 4);
+            timer->CCMR2 |= (TIMER_CCMRx_OC1M_PWM << 4);
+            timer->CCMR2 |= (1 << 3); // OC3PE preload enable
+            timer->CCER |= 0x100;     // CC3E enable
+            timer->CCR3 = ccr_val;
+            break;
+
+        case TIM_CHANNEL4:
+            timer->CCMR2 &= ~(0x7 << 12);
+            timer->CCMR2 |= (TIMER_CCMRx_OC1M_PWM << 12);
+            timer->CCMR2 |= (1 << 11); // OC4PE preload enable
+            timer->CCER |= 0x1000;     // CC4E enable
+            timer->CCR4 = ccr_val;
+            break;
+
+        default:
+            return;
+    }
+
+    // Генерация события обновления и включение таймера
+    timer->EGR |= TIMER_EGR_UG;
     timer->CR1 |= TIMER_CR1_ARPE | TIMER_CR1_CEN;
-    set_pwm_timer(timer, cfg->duty_cycle);
 }
