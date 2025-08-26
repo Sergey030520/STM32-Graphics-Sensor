@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/arm-none-eabi-gcc.cmake)
 
-project(IPS_TFT_ST7789 C ASM)
+project(STM32-Graphics-Sensor C ASM)
 
 set(EXECUTABLE ${PROJECT_NAME}.elf)
 set(LINKER_FILE ${CMAKE_SOURCE_DIR}/conf_mem_stm32f108/STM32F103C8TX_FLASH.ld)
