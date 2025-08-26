@@ -87,26 +87,29 @@ typedef enum
     I2C_ROLE_SLAVE
 } I2C_Role_t;
 
+typedef enum {
+    I2C_SPEED_STANDARD = 0, // 100 kHz
+    I2C_SPEED_FAST             // 400 kHz
+} I2C_Speed_t;
+
+
 // Конфигурация I2C
 typedef struct
 {
     I2C_Type *instance;        // Указатель на периферию I2C (I2C1, I2C2 и т.д.)
     I2C_Mode_t mode;           // Режим работы (polling / DMA)
     I2C_Role_t role;           // Master или Slave
-    uint32_t clock_speed;      // Тактовая частота шины (для master)
+    I2C_Speed_t clock_speed;      // Тактовая частота шины (для master)
     uint8_t address;           // Адрес устройства (для slave)
     DMA_Config dma_tx;         // DMA конфигурация передачи (если используется)
     DMA_Config dma_rx;         // DMA конфигурация приёма (если используется)
     GPIO_PinConfig_t *scl_pin; // Пин SCL
     GPIO_PinConfig_t *sda_pin; // Пин SDA
 } I2C_Config_t;
-
-
 typedef struct
 {
     I2C_Type *instance;      // Указатель на периферию I2C
     I2C_Role_t role;         // Master или Slave
-    uint8_t address;         // Адрес устройства (только для slave)
     I2C_Mode_t mode;         // Режим работы (polling / DMA)
      DMA_Config dma_tx;         // DMA конфигурация передачи (если используется)
     DMA_Config dma_rx;         // DMA конфигурация приёма (если используется)
@@ -114,12 +117,16 @@ typedef struct
 
 
 
-I2C_HandleTypeDef setup_i2c(I2C_Config_t *cfg, uint32_t pclk1_mhz);
+
+
+
+void setup_i2c(I2C_HandleTypeDef *handle_i2c, I2C_Config_t *cfg, uint32_t pclk1_mhz);
 int send_data_i2c(I2C_HandleTypeDef *hi2c, uint8_t data);
 int send_address_i2c(I2C_HandleTypeDef *hi2c, uint8_t address);
-int write_data_i2c(I2C_HandleTypeDef *hi2c, uint8_t reg, uint8_t data);
-int read_data_i2c(I2C_HandleTypeDef *hi2c, uint8_t reg, uint8_t *data);
-int read_multi_data_i2c(I2C_HandleTypeDef *hi2c, uint8_t reg, uint8_t *buffer, uint8_t length);
+int write_data_i2c(I2C_HandleTypeDef *hi2c, uint8_t dev_addr, uint8_t reg, uint8_t data);
+int write_multi_data_i2c(I2C_HandleTypeDef *hi2c, uint8_t dev_addr, uint8_t reg, uint8_t *data, uint16_t length);
+int read_data_i2c(I2C_HandleTypeDef *hi2c, uint8_t dev_addr, uint8_t reg, uint8_t *data);
+int read_multi_data_i2c(I2C_HandleTypeDef *hi2c, uint8_t dev_addr, uint8_t reg, uint8_t *buffer, uint8_t length);
 
 
 // irq

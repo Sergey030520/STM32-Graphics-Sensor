@@ -29,7 +29,7 @@ add_executable(${EXECUTABLE}
     usart_board.h usart_board.c
     oled_board.h oled_board.c
     tft_board.h tft_board.c
-    i2c_board.h i2c_board.c
+    sensors.h sensors.c
     gfx.h gfx.c
 )
 
@@ -39,6 +39,7 @@ target_compile_options(logger PRIVATE ${ARM_FLAGS})
 target_compile_options(driver_tft_st7789 PRIVATE ${ARM_FLAGS})
 target_compile_options(driver_oled_ssd1306 PRIVATE ${ARM_FLAGS})
 target_compile_options(driver_graphics PRIVATE ${ARM_FLAGS})
+target_compile_options(driver_sensor_sc7a20h PRIVATE ${ARM_FLAGS})
 target_compile_options(${EXECUTABLE} PRIVATE ${ARM_FLAGS})
 
 target_link_libraries(${EXECUTABLE} PRIVATE
@@ -47,6 +48,7 @@ target_link_libraries(${EXECUTABLE} PRIVATE
         driver_tft_st7789
         driver_oled_ssd1306
         driver_graphics
+        driver_sensor_sc7a20h
         m
 )
 

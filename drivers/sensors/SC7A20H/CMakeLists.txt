@@ -1,0 +1,9 @@
+SET(LIBRARY_SENSOR_SC7A20H driver_sensor_sc7a20h)
+
+
+add_library(${LIBRARY_SENSOR_SC7A20H} STATIC
+    SC7A20H.h SC7A20H.c
+)
+
+
+target_include_directories(${LIBRARY_SENSOR_SC7A20H} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

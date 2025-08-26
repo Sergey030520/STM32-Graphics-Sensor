@@ -1,0 +1,1 @@
+add_subdirectory(SC7A20H)
