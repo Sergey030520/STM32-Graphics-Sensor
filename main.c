@@ -8,13 +8,17 @@
 #include "log.h"
 #include "timer.h"
 #include "usart_board.h"
-
+#include "sensors.h"
+#include "string.h"
 #include "gfx.h"
+
+
 
 int init_rcc();
 int init_board();
 void print_clock_frequencies();
 
+void display_sensor_data(Vector *vector);
 
 
 
@@ -32,27 +36,25 @@ int main()
 
     print_clock_frequencies();
 
-    
+    sensors_init();
+
     gfx_drv_init();
 
-    gfx_test_display();
-    
-    gfx_drv_update();
+    Vector vector = {0};
 
     while (1)
     {
-        // Включить LED (PC13 = 0)
-        ledOn(1);
-
-        // send_byte_usart(0x11);
-        delay_timer(1000);
-        // for (volatile int i = 0; i < 500000; i++)
-        // ;
-
-        // Выключить LED (PC13 = 1)
-        ledOn(0);
-        // send_byte_usart(0x12);
-        delay_timer(1000);
+        status = get_data_sensor_sc7a20h(&vector);
+        if (status != 0)
+        {
+            LOG_INFO("Error get data sensor: %d\r\n", status);
+        }
+        else
+        {
+            display_sensor_data(&vector);
+            LOG_INFO("Sensor SC7A20H: {x:%d,y:%d,z:%d}\r\n", vector.X, vector.Y, vector.Z); 
+        }
+        delay_timer(5000);
     }
 
 error:
@@ -155,3 +157,15 @@ void print_clock_frequencies()
     LOG_INFO("source: %d\r\n", get_sysclk_source());
 }
 
+void display_sensor_data(Vector *vector)
+{
+    char buffer[1024];
+
+    snprintf(buffer, 1024,
+                       "Sensor SC7A20H: {x:%d, y:%d, z:%d}",
+                       vector->X, vector->Y, vector->Z);
+
+    gfx_drv_clear();
+    gfx_drv_draw_string(0, 0, buffer); 
+    gfx_drv_update();
+}

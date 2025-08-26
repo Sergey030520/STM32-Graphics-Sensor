@@ -19,6 +19,7 @@
         "gfx.h": "c",
         "oled_ssd1306.h": "c",
         "fonts.h": "c",
-        "graphics.h": "c"
+        "graphics.h": "c",
+        "usart_board.h": "c"
     }
 }
