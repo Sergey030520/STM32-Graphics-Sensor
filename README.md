@@ -215,13 +215,29 @@ error:
 
 #### Фото платы с подключением датчика
 
-![Sensor Board Setup](docs/images/sensor_board_setup.jpg)  
-*Подключение датчика SC7A20H к STM32 и OLED дисплею.*
+![STM32F103 Wiring](docs/images/stm32f103_wiring.jpg)  
+*Вид сверху на STM32F103 с проводами, подключенными к датчику SC7A20H и OLED SSD1306.*
+
+![Overall Setup](docs/images/overall_setup.jpg)  
+*Вид сверху всей сборки с подключённым датчиком и дисплеем.*
 
 #### Логи UART
 
-![UART Logs](docs/images/sensor_uart_logs.jpg)  
-*Пример вывода данных датчика через UART.*
+```
+[main.c:35] Драйверы запущены
+[main.c:151] SYSCLK: 72000000 Hz
+[main.c:152] HCLK  : 72000000 Hz
+[main.c:153] APB1  : 36000000 Hz
+[main.c:154] APB2  : 72000000 Hz
+[main.c:155] USB  : 48000000 Hz
+[main.c:156] ADC  : 12000000 Hz
+[main.c:157] source: 2
+[main.c:55] Sensor SC7A20H: {x:8235,y:16598,z:-4066}
+[main.c:55] Sensor SC7A20H: {x:28714,y:-16171,z:-12258}
+[main.c:55] Sensor SC7A20H: {x:-8150,y:-16171,z:-20449}
+[main.c:55] Sensor SC7A20H: {x:24619,y:-24363,z:-4066}
+[main.c:55] Sensor SC7A20H: {x:28715,y:16597,z:-20449}
+```
 
 ### Рисование примитивов напрямую <a name="draw_primitives_direct"></a>
 
