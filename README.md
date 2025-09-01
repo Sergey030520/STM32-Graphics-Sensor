@@ -23,7 +23,12 @@
 5. [Выбор дисплея](#choose_display)  
 6. [Структура проекта](#project_structure)  
 7. [Примеры работы](#example_work_project)
-8. [Загрузка на плату](#flash_to_board)
+   - [Основной цикл](#main_loop)
+   - [Пример работы: датчик + OLED SSD1306](#example_sensor_oled)
+   - [Рисование примитивов напрямую](#draw_primitives_direct)
+   - [Рисование примитивов через библиотеку `graphics`](#draw_primitives_graphics)
+   - [Пример рисования примитивов с функцией draw_pixel](#draw_primitives_with_draw_pixel)
+9. [Загрузка на плату](#flash_to_board)
 
 ---
 
@@ -150,7 +155,7 @@ set(TFT_DISPLAY ON)
 
 ## Примеры работы <a name="example_work_project"></a>
 
-### Основной цикл
+### Основной цикл <a name="main_loop"></a>
 - Опрашивает датчик **SC7A20H**.  
 - Выводит данные на дисплей (по умолчанию — SSD1306).  
 
@@ -199,7 +204,26 @@ error:
 }
 ```
 
-### Рисование примитивов напрямую
+### Пример работы: датчик + OLED SSD1306 <a name="example_sensor_oled"></a>
+
+В этом примере данные с датчика **SC7A20H** выводятся на дисплей **SSD1306** и логируются через UART (по умолчанию 9600 бод).  
+
+#### Фото дисплея
+
+![OLED SSD1306 Display](docs/images/sensor_oled_display.jpg)  
+*На фото показаны текущие значения акселерометра SC7A20H на дисплее.*
+
+#### Фото платы с подключением датчика
+
+![Sensor Board Setup](docs/images/sensor_board_setup.jpg)  
+*Подключение датчика SC7A20H к STM32 и OLED дисплею.*
+
+#### Логи UART
+
+![UART Logs](docs/images/sensor_uart_logs.jpg)  
+*Пример вывода данных датчика через UART.*
+
+### Рисование примитивов напрямую <a name="draw_primitives_direct"></a>
 
 ```c
 gfx_drv_fill((Point){0, 0}, (Point){disp.width - 1, disp.height - 1});
@@ -211,7 +235,7 @@ gfx_drv_draw_circle((Point){disp.width/2, disp.height/2}, 20);
 gfx_drv_draw_string(0, 0, "Test");
 gfx_drv_fill((Point){5, 5}, (Point){15, 15});
 ```
-### Рисование примитивов через библиотеку `graphics`
+### Рисование примитивов через библиотеку `graphics` <a name="draw_primitives_graphics"></a>
 
 Для работы всех функций используется структура дисплея:
 
@@ -222,7 +246,7 @@ typedef struct {
     uint16_t height;
 } GFX_Display_t;
 ```
-### Пример рисования примитивов (через библиотеку `graphics` с собственной функцией draw_pixel)
+### Пример рисования примитивов (через библиотеку `graphics` с собственной функцией draw_pixel) <a name="draw_primitives_with_draw_pixel"></a>
 
 > Пример показывает, как рисовать линии, прямоугольники, круги, треугольники и текст напрямую через библиотеку `graphics`, используя структуру `GFX_Display_t`, где вы сами задаёте функцию отрисовки пикселя (`draw_pixel`), размеры дисплея и текущие цвета.
 
